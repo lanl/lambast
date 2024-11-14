@@ -5,13 +5,15 @@ Utility functions.
 
 import numpy as np
 
+
 def is_valid_covariance(matrix, tol=1e-8):
     """
     Checks if a matrix is a valid covariance matrix.
 
     Parameters:
         matrix (np.ndarray): The matrix to check.
-        tol (float): Tolerance for checking symmetry and non-negative eigenvalues.
+        tol (float): Tolerance for checking symmetry and non-negative
+            eigenvalues.
 
     Returns:
         bool: True if the matrix is a valid covariance matrix, False otherwise.
