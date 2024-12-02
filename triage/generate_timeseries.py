@@ -5,6 +5,7 @@ Time series generation classes.
 
 import warnings
 import numpy as np
+import matplotlib.pyplot as plt
 
 from util import is_valid_covariance
 
@@ -170,17 +171,26 @@ class HiddenSemiMarkovModel(TimeSeries):
                                 state_durations]
 
         # Validate inputs
+        num_states = len(self.init_probs)
         if not np.isclose(np.sum(self.init_probs), 1):
             raise ValueError("Initial state probabilities must sum to 1.")
         if self.transition_probs.shape[0] != self.transition_probs.shape[1]:
             raise ValueError("Transition matrix must be square.")
+        if self.transition_probs.shape[0] != num_states:
+            e = "Transition matrix dimensions must match the number of states."
+            raise ValueError(e)
         if not np.allclose(self.transition_probs.sum(axis=1), 1):
             e = "Each row of the transition matrix must sum to 1."
             raise ValueError(e)
-        if len(self.emission_means) != len(self.emission_covariances) or \
-                len(self.emission_means) != len(self.state_durations):
-            e = "Mismatch between the number of states and the"
-            e += " provided parameters"
+        if len(self.emission_means) != num_states:
+            e = "Number of emission means must match the number of states."
+            raise ValueError(e)
+        if len(self.emission_covariances) != num_states:
+            e = "Number of emission covariances must match the "
+            e += "number of states."
+            raise ValueError(e)
+        if len(self.state_durations) != num_states:
+            e = "Number of state durations must match the number of states."
             raise ValueError(e)
 
         for cov in self.emission_covariances:
@@ -652,8 +662,6 @@ class Normal(Copula):
 # Add some driver code as a test for the above classes
 if __name__ == "__main__":
 
-    import matplotlib.pyplot as plt
-
     def driver_LinearSSM():
         """
         Driver test for the LinearSSM class
@@ -691,7 +699,70 @@ if __name__ == "__main__":
         """
         Driver test for the LinearSSM class
         """
-        # TODO
-        raise NotImplementedError("Driver not implemented")
+        # Define HSMM parameters
+
+        # Initial state probabilities
+        init_probs = [0.7, 0.3]
+
+        transition_probs = [[0.8, 0.2], [0.3, 0.7]]  # Transition probabilities
+
+        emission_means = [[0, 0], [3, 3]]  # Mean vectors for states 0 and 1
+
+        # Covariance matrices for state 0 and 1
+        emission_covariances = [[[1, 0.2], [0.2, 1]],
+                                [[1, -0.3], [-0.3, 1]]]
+
+        # Duration probabilities for each state
+        state_durations = [[0.6, 0.3, 0.1], [0.5, 0.5]]
+
+        # Initialize the HSMM
+        hsmm = HiddenSemiMarkovModel(init_probs, transition_probs,
+                                     emission_means, emission_covariances,
+                                     state_durations)
+
+        # Generate samples
+        n, t = 5, 100  # Generate 3 time series of length 20
+        samples, states = hsmm.sample(n, t)
+
+        # Plot
+        fig, axes = plt.subplots(3, 1, figsize=(10, 15))
+        # Define a color palette for the time series
+        colors = plt.cm.viridis(np.linspace(0, 1, n))
+
+        def do_plot(all_data, title, xlabel="Time",
+                    ylabel="Value", label="Time Series"):
+            """
+            Factor out the plots
+            """
+            for i, (data, color) in enumerate(zip(all_data, colors)):
+                axes[ax_index].plot(data, label=f"{label} {i + 1}",
+                                    color=color)
+            axes[ax_index].set_title(title)
+            axes[ax_index].set_xlabel(xlabel)
+            axes[ax_index].set_ylabel(ylabel)
+            axes[ax_index].legend()
+
+        # Transpose samples to access them easier for plot
+        t_samples = np.transpose(samples)
+
+        # Plot dimension 1 for all time series
+        ax_index = 0
+        do_plot(t_samples[0].T, "Dimension 1 of Time Series",
+                label="Time Series")
+
+        # Plot dimension 2 for all time series
+        ax_index += 1
+        do_plot(t_samples[1].T, "Dimension 2 of Time Series",
+                label="Time Series")
+
+        # Plot state sequences for all time series
+        ax_index += 1
+        do_plot(states, "State Sequences", ylabel="State",
+                label="State Sequence")
+
+        # Adjust layout and show the plot
+        plt.tight_layout()
+        plt.show()
 
     driver_LinearSSM()
+    driver_HiddenSemiMarkovModel()
