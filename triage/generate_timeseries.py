@@ -280,6 +280,7 @@ class HiddenSemiMarkovModel(TimeSeries):
 
 
 class Copula(TimeSeries):
+
     def __init__(self, alpha=None, markovian=True):
         """
         Initializes a new instance of a Copula.
