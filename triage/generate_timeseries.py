@@ -6,6 +6,7 @@ Time series generation classes.
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import truncnorm
 
 from util import is_valid_covariance
 
@@ -142,7 +143,7 @@ class LinearSSM(TimeSeries):
 class HiddenSemiMarkovModel(TimeSeries):
 
     def __init__(self, init_probs, transition_probs, emission_means,
-                 emission_covariances, state_durations):
+                 emission_covariances, state_durations_params):
         """
         Initialize the Hidden Semi-Markov Model with multivariate emissions.
 
@@ -156,9 +157,9 @@ class HiddenSemiMarkovModel(TimeSeries):
                 emissions in each state.
             emission_covariances: A list of covariance matrices
                 (2D numpy arrays) for emissions in each state.
-            state_durations: A list of lists or arrays, where each sublist
-                represents the probability distribution of durations
-                for each state.
+            state_durations_params: A list of tuples
+                [(mean, std, min, max), ...] representing the mean, standard
+                deviation, and truncation range for the duration of each state.
         """
         super().__init__()
 
@@ -167,8 +168,7 @@ class HiddenSemiMarkovModel(TimeSeries):
         self.emission_means = [np.array(mean) for mean in emission_means]
         self.emission_covariances = [np.array(cov) for cov in
                                      emission_covariances]
-        self.state_durations = [np.array(durations) for durations in
-                                state_durations]
+        self.state_durations_params = state_durations_params
 
         # Validate inputs
         num_states = len(self.init_probs)
@@ -189,8 +189,9 @@ class HiddenSemiMarkovModel(TimeSeries):
             e = "Number of emission covariances must match the "
             e += "number of states."
             raise ValueError(e)
-        if len(self.state_durations) != num_states:
-            e = "Number of state durations must match the number of states."
+        if len(self.state_durations_params) != num_states:
+            e = "Number of state duration parameters must match the "
+            e += "number of states."
             raise ValueError(e)
 
         for cov in self.emission_covariances:
@@ -201,6 +202,24 @@ class HiddenSemiMarkovModel(TimeSeries):
             if not np.all(np.linalg.eigvals(cov) >= 0):
                 e = "Each covariance matrix must be positive semi-definite."
                 raise ValueError(e)
+
+    def truncated_discrete_normal(self, mean, std, min_val, max_val, size=1):
+        """
+        Sample from a truncated discrete normal distribution.
+
+        Parameters:
+            mean: Mean of the normal distribution.
+            std: Standard deviation of the normal distribution.
+            min_val: Minimum truncation value.
+            max_val: Maximum truncation value.
+            size: Number of samples to generate.
+
+        Returns:
+            A NumPy array of samples.
+        """
+        a, b = (min_val - mean) / std, (max_val - mean) / std
+        samples = truncnorm(a, b, loc=mean, scale=std).rvs(size=size)
+        return np.clip(np.round(samples), min_val, max_val).astype(int)
 
     def sample(self, n, t):
         """
@@ -230,10 +249,11 @@ class HiddenSemiMarkovModel(TimeSeries):
             time = 0
 
             while time < t:
-                # Sample a duration from the current state's
-                # duration distribution
-                sd = self.state_durations[current_state]
-                duration = np.random.choice(len(sd), p=sd)
+                # Sample duration from truncated discrete normal distribution
+                values = self.state_durations_params[current_state]
+                mean, std, min_val, max_val = values
+                duration = self.truncated_discrete_normal(mean, std, min_val,
+                                                          max_val, size=1)[0]
 
                 # Limit duration to avoid exceeding the time series length
                 duration = min(duration, t - time)
@@ -699,6 +719,9 @@ if __name__ == "__main__":
         """
         Driver test for the LinearSSM class
         """
+        # Define number of time series to generate and their length
+        n, t = 5, 100  # Generate 5 time series of length 100
+
         # Define HSMM parameters
 
         # Initial state probabilities
@@ -712,16 +735,18 @@ if __name__ == "__main__":
         emission_covariances = [[[1, 0.2], [0.2, 1]],
                                 [[1, -0.3], [-0.3, 1]]]
 
-        # Duration probabilities for each state
-        state_durations = [[0.6, 0.3, 0.1], [0.5, 0.5]]
+        # Duration parameters for each state
+        state_durations_params = [
+            (10, 3, 1, t),  # State 1: mean=10, std=3, min=5, max=t
+            (20, 5, 1, t),  # State 2: mean=20, std=5, min=10, max=t
+        ]
 
         # Initialize the HSMM
         hsmm = HiddenSemiMarkovModel(init_probs, transition_probs,
                                      emission_means, emission_covariances,
-                                     state_durations)
+                                     state_durations_params)
 
-        # Generate samples
-        n, t = 5, 100  # Generate 3 time series of length 20
+        # Generate time series data using above HSMM parameters
         samples, states = hsmm.sample(n, t)
 
         # Plot
