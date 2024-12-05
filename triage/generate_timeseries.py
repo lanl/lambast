@@ -8,8 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import truncnorm
 
-from util import is_valid_covariance
-
+from .util import is_valid_covariance
 
 class TimeSeries:
 
@@ -80,7 +79,6 @@ class LinearSSM(TimeSeries):
             raise ValueError("State cov matrix is not (d,d)")
         if obs_noise_cov.shape[0] != self.p:
             raise ValueError("Obs cov matrix is not (d,d)")
-
         self.state_matrix = state_matrix
         self.state_noise_cov = state_noise_cov
         self.obs_matrix = obs_matrix
@@ -132,11 +130,11 @@ class LinearSSM(TimeSeries):
         state = self.rng.multivariate_normal(init_mean, init_cov,
                                              size=n)[:, :, np.newaxis]
         # sample initial observation
-        ts_samples[:, :, 0] = self.get_observation(state).squeeze()
+        ts_samples[:, :, 0] = self.get_observation(state)[:, :, 0]
         # recursively sample observations
         for t_index in range(1, t):
             state = self.evolve_state(state)
-            ts_samples[:, :, t_index] = self.get_observation(state).squeeze()
+            ts_samples[:, :, t_index] = self.get_observation(state)[:, :, 0]
         return ts_samples
 
 

@@ -5,7 +5,6 @@ Utility functions.
 
 import numpy as np
 
-
 def is_valid_covariance(matrix, tol=1e-8):
     """
     Checks if a matrix is a valid covariance matrix.
