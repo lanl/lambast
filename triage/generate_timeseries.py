@@ -3,12 +3,19 @@ Time series generation classes.
 
 """
 
+import copy
 import warnings
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import truncnorm
 
-from .util import is_valid_covariance
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
+from stats import truncnorm
+
+# Fix relative imports if running this file directly
+if __name__ == "__main__":
+    from util import is_valid_covariance
+else:
+    from .util import is_valid_covariance
 
 
 class TimeSeries:
@@ -33,7 +40,7 @@ class TimeSeries:
 class LinearSSM(TimeSeries):
 
     def __init__(self, state_matrix, state_noise_cov, obs_matrix,
-                 obs_noise_cov, rng=None):
+                 obs_noise_cov, rng=None, scale_matrix=False):
         """
         Initializes a new instance of a Linear State Space Model.
         State dimension is d, observation dimension is p.
@@ -50,6 +57,8 @@ class LinearSSM(TimeSeries):
                 observation noise covariance
             rng: numpy rng (else use default); see
                 https://numpy.org/doc/2.0/reference/random/index.html#random-quick-start
+            scale_matrix (bool): Whether to rescale the matrix for stability,
+                default, false.
         """
         super().__init__()
 
@@ -58,20 +67,23 @@ class LinearSSM(TimeSeries):
         else:
             self.rng = rng
 
-        self.d = len(state_matrix)
-        self.p = len(obs_matrix)
+        self.d = state_matrix.shape[0]
+        self.p = obs_matrix.shape[0]
 
-        # check inputs
-        # check if state matrix is stable and warn user if not
-        eigenvalues = np.linalg.eigvals(state_matrix)
-        spectral_radius = max(abs(eigenvalues))
-        eigenvalues = np.linalg.eigvals(state_matrix)
-        if spectral_radius >= 1:
-            warnings.warn('Warning: state_matrix is not stable.')
-        # check if covariance matrices are valid
+        self.state_matrix = state_matrix
+        self.state_noise_cov = state_noise_cov
+        self.obs_matrix = obs_matrix
+        self.obs_noise_cov = obs_noise_cov
+
+        # Check if state matrix is stable and warn user if not, but only if
+        # scale_matrix is false, if scale_matrix is true, just scale the matrix
+        self.rescale_matrix(scale_matrix)
+
+        # Check if covariance matrices are valid
         is_valid_covariance(state_noise_cov)
         is_valid_covariance(obs_noise_cov)
-        # check shapes
+
+        # Check shapes
         if state_matrix.shape[0] != state_matrix.shape[1]:
             raise ValueError("State matrix is not square")
         if obs_matrix.shape[1] != self.d:
@@ -80,10 +92,40 @@ class LinearSSM(TimeSeries):
             raise ValueError("State cov matrix is not (d,d)")
         if obs_noise_cov.shape[0] != self.p:
             raise ValueError("Obs cov matrix is not (d,d)")
-        self.state_matrix = state_matrix
-        self.state_noise_cov = state_noise_cov
-        self.obs_matrix = obs_matrix
-        self.obs_noise_cov = obs_noise_cov
+
+    def rescale_matrix(self, scale_matrix):
+        """
+        Function that re-scales the state matrix to make it stable
+
+        Parameter:
+            scale_matrix (bool): Whether to rescale the state matrix
+        """
+        eigenvalues = np.linalg.eigvals(self.state_matrix)
+        spectral_radius = np.max(np.abs(eigenvalues))
+        if spectral_radius >= 1:
+            if scale_matrix:
+                self.state_matrix /= (spectral_radius + 0.1)
+            else:
+                warnings.warn('Warning: state_matrix is not stable.')
+
+    def copy_with_changes(self, **kwargs):
+        """
+        Copy the initial parameters of this object into another object. Allow
+        kwargs to change the initial values of the copy object.
+        """
+
+        # Copy current object
+        other = copy.deepcopy(self)
+
+        # Copy changed arguments
+        for k in kwargs:
+            other.__dict__[k] = kwargs[k]
+
+        scale_key = "scale_matrix"
+        if scale_key in kwargs:
+            other.rescale_matrix(kwargs[scale_key])
+
+        return other
 
     def evolve_state(self, state):
         """
@@ -91,17 +133,17 @@ class LinearSSM(TimeSeries):
         """
         mv_n = self.rng.multivariate_normal
         draws = mv_n(np.zeros((self.d)), self.state_noise_cov,
-                     size=(len(state)))[:, :, np.newaxis]
+                     size=(state.shape[0]))[:, :, np.newaxis]
 
         return self.state_matrix @ state + draws
 
-    def get_observation(self, state):
+    def get_obs(self, state):
         """
         Docstring TODO
         """
         mv_n = self.rng.multivariate_normal
         draws = mv_n(np.zeros((self.p)), self.obs_noise_cov,
-                     size=(len(state)))[:, :, np.newaxis]
+                     size=(state.shape[0]))[:, :, np.newaxis]
 
         return self.obs_matrix @ state + draws
 
@@ -122,24 +164,41 @@ class LinearSSM(TimeSeries):
         Returns:
             Numpy array of shape (n,p,t) representing generated time series
         """
-        ts_samples = np.zeros((n, self.p, t))
+        self.ts_samples = np.zeros((n, self.p, t))
         if init_mean is None:
             init_mean = np.zeros((self.d))
         if init_cov is None:
             init_cov = np.eye(self.d)
-        # sample initial state
+
+        # Sample initial state
         state = self.rng.multivariate_normal(init_mean, init_cov,
                                              size=n)[:, :, np.newaxis]
-        # sample initial observation
-        ts_samples[:, :, 0] = self.get_observation(state)[:, :, 0]
-        # recursively sample observations
-        for t_index in range(1, t):
+
+        # Recursively sample observations
+        for t_index in range(t):
+            self.ts_samples[:, :, t_index] = self.get_obs(state)[:, :, 0]
             state = self.evolve_state(state)
-            ts_samples[:, :, t_index] = self.get_observation(state)[:, :, 0]
-        return ts_samples
+
+        return self.ts_samples
+
+    def plot_sample(self):
+        """
+        Plot the time series sample
+        """
+        plt.figure()
+
+        for i in range(self.p):
+            subplot_index = int(f"{self.p}1{i + 1}")
+            plt.subplot(subplot_index)
+
+            plt.plot(self.ts_samples[:, i, :].T)
+            plt.title(f"Dim. {i}")
+
+        plt.xlabel('Time')
+        plt.show()
 
 
-class HiddenSemiMarkovModel(TimeSeries):
+class HSMM(TimeSeries):
 
     def __init__(self, init_probs, transition_probs, emission_means,
                  emission_covariances, state_durations_params):
@@ -216,8 +275,10 @@ class HiddenSemiMarkovModel(TimeSeries):
         Returns:
             A NumPy array of samples.
         """
-        a, b = (min_val - mean) / std, (max_val - mean) / std
+        a = (min_val - mean) / std
+        b = (max_val - mean) / std
         samples = truncnorm(a, b, loc=mean, scale=std).rvs(size=size)
+
         return np.clip(np.round(samples), min_val, max_val).astype(int)
 
     def sample(self, n, t):
@@ -343,7 +404,6 @@ class Copula(TimeSeries):
             u: uniform variable between (0,1)
             w: uniform variable between (0,1)
         """
-        from scipy import stats
         if u is None:
             u = stats.uniform.rvs(0, 1)
         if w is None:
@@ -364,7 +424,6 @@ class Copula(TimeSeries):
             t: integer, default 1000, number of time points
         Returns ndarray of random variables of shape [n, t]
         """
-        from scipy import stats
         # Initialize empty matrix
         uniform_samples = np.zeros((n, t))
 
@@ -433,7 +492,6 @@ class Copula(TimeSeries):
             uniform_samples: np.array() of samples between (0,1)
         Returns samples after being passed through the marginal distribution.
         """
-        from scipy import stats
         if self.marginal_family == "uniform":
             x = uniform_samples  # do nothing, keep marginal uniform
 
@@ -654,7 +712,6 @@ class Normal(Copula):
             raise ValueError(e)
 
     def variable_generator(self, u, w):
-        from scipy import stats
         psi_i_k = stats.norm.ppf(w)
         psi_i_u = stats.norm.ppf(u)
         inner_term = psi_i_k * \
@@ -663,7 +720,6 @@ class Normal(Copula):
         return v
 
     def density_generator(self, u, v):
-        from scipy import stats
         psi_i_u = stats.norm.ppf(u)
         psi_i_v = stats.norm.ppf(v)
 
@@ -684,37 +740,25 @@ def driver_LinearSSM():
     """
     Driver test for the LinearSSM class
     """
-    # small test case for now; probably need to put this somewhere else
+    # Small test case for now; probably need to put this somewhere else
     rng = np.random.default_rng(seed=42)
     d = 7
     p = 2
     n = 5
     t = 150
-    # generate stable state matrix
+
+    # Generate state matrix
     state_matrix = rng.normal(size=(d, d))
-    eigenvalues = np.linalg.eigvals(state_matrix)
-    spectral_radius = max(abs(eigenvalues))
-    # Scale to ensure spectral radius < 1
-    if spectral_radius >= 1:
-        state_matrix = state_matrix / (spectral_radius + 0.1)
     obs_matrix = rng.normal(size=(p, d))
     state_noise_cov = 0.1 * np.eye(d)
     obs_noise_cov = 0.01 * np.eye(p)
     ssm = LinearSSM(state_matrix, state_noise_cov, obs_matrix,
-                    obs_noise_cov, rng=rng)
-    ts = ssm.sample(n, t)
-    plt.figure()
-    plt.subplot(211)
-    plt.plot(ts[:, 0, :].T)
-    plt.title("Dim. 0")
-    plt.subplot(212)
-    plt.plot(ts[:, 1, :].T)
-    plt.title("Dim. 1")
-    plt.xlabel('Time')
-    plt.show()
+                    obs_noise_cov, rng=rng, scale_matrix=True)
+    ssm.sample(n, t)
+    ssm.plot_sample()
 
 
-def driver_HiddenSemiMarkovModel():
+def driver_HSMM():
     """
     Driver test for the LinearSSM class
     """
@@ -741,9 +785,8 @@ def driver_HiddenSemiMarkovModel():
     ]
 
     # Initialize the HSMM
-    hsmm = HiddenSemiMarkovModel(init_probs, transition_probs,
-                                 emission_means, emission_covariances,
-                                 state_durations_params)
+    hsmm = HSMM(init_probs, transition_probs, emission_means,
+                emission_covariances, state_durations_params)
 
     # Generate time series data using above HSMM parameters
     samples, states = hsmm.sample(n, t)
@@ -759,8 +802,7 @@ def driver_HiddenSemiMarkovModel():
         Factor out the plots
         """
         for i, (data, color) in enumerate(zip(all_data, colors)):
-            axes[ax_index].plot(data, label=f"{label} {i + 1}",
-                                color=color)
+            axes[ax_index].plot(data, label=f"{label} {i + 1}", color=color)
         axes[ax_index].set_title(title)
         axes[ax_index].set_xlabel(xlabel)
         axes[ax_index].set_ylabel(ylabel)
@@ -792,4 +834,4 @@ def driver_HiddenSemiMarkovModel():
 if __name__ == "__main__":
 
     driver_LinearSSM()
-    driver_HiddenSemiMarkovModel()
+    driver_HSMM()
