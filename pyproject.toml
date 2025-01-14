@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+name = "triage"
+description = ""
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "statsmodels",
+    "pandas",
+    "seaborn",
+]
+authors = [
+    {name = "Natalie Elizabeth Klein", email = "neklein@lanl.gov"},
+    {name = "Nidhi K Parikh", email = "nidhip@lanl.gov"},
+    {name = "Samuel Thomas Wilkins Myren", email = "myrenst@lanl.gov"},
+    {name = "Nishant Panda", email = "nishpan@lanl.gov"},
+    {name = "Amber Joule Day", email = "aday@lanl.gov"},
+]
+maintainers = [
+    {name = "Andrés Yagüe López", email = "ayaguelopez@lanl.gov"},
+]

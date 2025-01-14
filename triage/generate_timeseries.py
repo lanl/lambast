@@ -9,7 +9,7 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-from stats import truncnorm
+from scipy.stats import truncnorm
 
 # Fix relative imports if running this file directly
 if __name__ == "__main__":
