@@ -420,8 +420,8 @@ class Copula(TimeSeries):
         copula. The marginal distribution will be uniform.
 
         Parameters:
-            n: integer, default 2, number of samples to draw of length t
-            t: integer, default 1000, number of time points
+            n: integer, number of samples to draw of length t
+            t: integer, number of time points
         Returns ndarray of random variables of shape [n, t]
         """
         # Initialize empty matrix
@@ -740,7 +740,6 @@ def driver_LinearSSM():
     """
     Driver test for the LinearSSM class
     """
-    # Small test case for now; probably need to put this somewhere else
     rng = np.random.default_rng(seed=42)
     d = 7
     p = 2

@@ -93,5 +93,5 @@ def run_example():
     ssm_C.sample(n, t)
     plot_ts_and_new_ts(ssm.ts_samples, new_ts=ssm_C.ts_samples)
 
-    # Case D: change point (sort of)
     # TODO
+    # Case D: change point (sort of)
