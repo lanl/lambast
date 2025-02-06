@@ -10,5 +10,6 @@ from .generate_timeseries import Normal
 from .non_timeseries_detection_methods import DetectionMethods
 
 from .util import is_valid_covariance
+from .timing import timing
 
 from .examples import __init__

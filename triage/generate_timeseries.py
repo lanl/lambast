@@ -11,11 +11,7 @@ import numpy as np
 from scipy import stats
 from scipy.stats import truncnorm
 
-# Fix relative imports if running this file directly
-if __name__ == "__main__":
-    from util import is_valid_covariance
-else:
-    from .util import is_valid_covariance
+from .util import is_valid_covariance
 
 
 class TimeSeries:
