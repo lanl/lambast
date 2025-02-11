@@ -9,7 +9,5 @@ from .generate_timeseries import Normal
 
 from .non_timeseries_detection_methods import DetectionMethods
 
-from .timeseries_detection import ChangePointDetection
-
 from .util import is_valid_covariance
 from .timing import timing
