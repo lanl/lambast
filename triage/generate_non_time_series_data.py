@@ -12,6 +12,8 @@ class BaseDataClass:
         Base class for non-timeseries data.
         """
 
+        return None
+
     def sample(self, num_samples, *args, **kwargs):
         """
         Sample `n` points from the BaseDataClass model.

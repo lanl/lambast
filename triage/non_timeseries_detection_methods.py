@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import scipy as sp
 
@@ -8,7 +10,8 @@ class DetectionMethods(object):
     """
 
     def __init__(self, train_data, target_data, num_bins=20, num_samples=1000,
-                 p_value=5e-2, min_bin_prob=1e-10, n_resamples=1e5, wass_p=1):
+                 p_value=5e-2, min_bin_prob=1e-10, n_resamples=1e5, wass_p=1,
+                 diff_tol=1e-14):
         """
         Parameters:
         - train_data: A list of training data samples.
@@ -22,6 +25,8 @@ class DetectionMethods(object):
             issues with empty bin (divide by 0 issues); default is 1*10^-10.
         - n_resamples: Number of permutations evaluated for the permutation
             test; default is 100,000.
+        - diff_tol: Difference tolerance to consider data different for
+            memoization purposes
         """
 
         self.train_data = train_data
@@ -33,6 +38,17 @@ class DetectionMethods(object):
         self.min_bin_prob = min_bin_prob
         self.n_resamples = int(n_resamples)
         self.wass_p = wass_p
+
+        # NOTE: These are variables used for resampling memoization. That way
+        # both "self.train_data" and "self.target_data" can be kept unchanged
+        # from one reshufling to the next. They also help to recognize when
+        # we cannot rely on memoization and have to re-caculate the expensive
+        # values again.
+        self.train_d = None
+        self.target_d = None
+        self.prev_train = None
+        self.prev_target = None
+        self.diff_tol = diff_tol
 
     def __data_range(self, train_data=None, target_data=None):
         """
@@ -132,7 +148,7 @@ class DetectionMethods(object):
 
     def metric(self, train_data=None, target_data=None, num_bins=None,
                min_bin_prob=None, num_samples=None, wass_p=None, use=None,
-               type_=None):
+               type_=None, memoize=False):
         """
         Returns a given metric
 
@@ -152,44 +168,63 @@ class DetectionMethods(object):
         - wass_p: Wasserstein distance order; default is 1
         """
 
+        if train_data is None:
+            train_data = self.train_data
+        if target_data is None:
+            target_data = self.target_data
+
+        if not memoize:
+            self.train_d = None
+            self.target_d = None
+        else:
+            # Here we are checking if the values have changed, even if asked
+            # to memoize, the values should be calculated again if anything
+            # has changed.
+            if train_data is not None and self.prev_train is not None:
+                if (abs(self.prev_train - train_data) > self.diff_tol).any():
+                    self.train_d = None
+            if target_data is not None and self.prev_target is not None:
+                if (abs(self.prev_target - target_data) > self.diff_tol).any():
+                    self.target_d = None
+
+            self.prev_target = copy.copy(target_data)
+            self.prev_train = copy.copy(train_data)
+
         # Train and target percentages or distributions
-        if use == "histogram":
-            train_d, target_d = self.__get_percent(train_data=train_data,
-                                                   target_data=target_data,
-                                                   num_bins=num_bins,
-                                                   min_bin_prob=min_bin_prob)
-        elif use == "kde":
-            train_d, target_d = self.__get_distrib(train_data=train_data,
-                                                   target_data=target_data,
-                                                   num_samples=num_samples)
-        elif type_ != "KS":
-            e = "Provide a use parameter: 'histogram' or 'kde'"
-            raise Exception(e)
+        if self.train_d is None or self.target_d is None:
+            if use == "histogram":
+                train_d, target_d = self.__get_percent(train_data=train_data,
+                                                       target_data=target_data,
+                                                       num_bins=num_bins,
+                                                       min_bin_prob=min_bin_prob)
+            elif use == "kde":
+                train_d, target_d = self.__get_distrib(train_data=train_data,
+                                                       target_data=target_data,
+                                                       num_samples=num_samples)
+            elif type_ != "KS":
+                e = "Provide a use parameter: 'histogram' or 'kde'"
+                raise Exception(e)
+
+            self.train_d = train_d
+            self.target_d = target_d
 
         if type_ == "PSI":
-            value = np.sum((train_d - target_d) * np.log(train_d / target_d))
+            value = np.sum((self.train_d - self.target_d) *
+                           np.log(self.train_d / self.target_d))
         elif type_ == "JS":
-            value = sp.spatial.distance.jensenshannon(train_d, target_d,
-                                                      base=np.e)
+            value = sp.spatial.distance.jensenshannon(self.train_d,
+                                                      self.target_d, base=np.e)
         elif type_ == "WD":
             if wass_p is None:
                 wass_p = self.wass_p
 
-            # TODO maybe put before the train_d and target_d calculation
             if wass_p == 1:
-                if train_data is None:
-                    train_data = self.train_data
-                if target_data is None:
-                    target_data = self.target_data
-                value = sp.stats.wasserstein_distance(train_data, target_data)
+                value = sp.stats.wasserstein_distance(self.train_d,
+                                                      self.target_d)
             else:
-                value = np.mean(np.abs(train_d - target_d) ** wass_p)
+                value = np.mean(np.abs(self.train_d - self.target_d) ** wass_p)
                 value **= 1 / wass_p
         elif type_ == "KS":
-            if train_data is None:
-                train_data = self.train_data
-            if target_data is None:
-                target_data = self.target_data
             ks_test_result = sp.stats.kstest(train_data, target_data,
                                              alternative='two-sided')
             value = ks_test_result.statistic
@@ -201,10 +236,14 @@ class DetectionMethods(object):
 
     def data_shift_test(self, wass_p=None, num_bins=None, min_bin_prob=None,
                         num_samples=None, n_resamples=None, p_value=None,
-                        use=None, type_=None):
+                        use=None, metrics=None):
         """
-        Return 1 if data shift is detected from "self.train_data" to
-        "self.target_data" based on type_ metric and permutation test, else 0.
+        Return tuple of p_value and boolean value equal to 1 if data shift is
+        detected from "self.train_data" to "self.target_data" based on metric
+        and permutation test, else 0.
+
+        If list of metrics was given, return list of the tuples described above
+        for each type of metric in the same order.
 
         Parameters:
         - p_value: P value; default is 0.05.
@@ -217,7 +256,8 @@ class DetectionMethods(object):
         - n_resamples: Number of permutations evaluated for the permutation
             test; default is 100,000.
         - use: String, either "histogram" or "kde"
-        - type_: String, metric type, values: "PSI", "JS", "WD", "KS"
+        - metrics: String or list of strings, metric type, values: "PSI", "JS",
+            "WD", "KS"
         - wass_p: Wasserstein distance order; default is 1
         """
 
@@ -228,33 +268,69 @@ class DetectionMethods(object):
         if wass_p is None:
             wass_p = self.wass_p
 
-        if type_ == "KS":
-            ks_test_result = sp.stats.kstest(self.train_data, self.target_data,
-                                             alternative='two-sided')
+        is_list = type(metrics) is list
 
-            return int(ks_test_result.pvalue < p_value)
+        if not is_list:
+            metrics = [metrics]
 
-        observed_stat = self.metric(wass_p=wass_p, num_bins=num_bins,
-                                    min_bin_prob=min_bin_prob,
-                                    num_samples=num_samples, use=use,
-                                    type_=type_)
-        combined_data = np.concatenate((self.train_data, self.target_data))
+        observed_stat = []
         permuted_stats = []
+        results = []
+
+        # Save the combined data here
+        combined_data = np.concatenate((self.train_data, self.target_data))
+
+        for type_ in metrics:
+
+            observed_stat.append(None)
+            permuted_stats.append([])
+            results.append(None)
+
+            if type_ == "KS":
+                ks_test_result = sp.stats.kstest(self.train_data,
+                                                 self.target_data,
+                                                 alternative='two-sided')
+
+                # Give the results already
+                result = (ks_test_result.pvalue,
+                          ks_test_result.pvalue < p_value)
+                results[-1] = result
+                continue
+
+            observed_stat[-1] = self.metric(wass_p=wass_p, num_bins=num_bins,
+                                            min_bin_prob=min_bin_prob,
+                                            num_samples=num_samples, use=use,
+                                            type_=type_)
 
         for i in range(n_resamples):
             np.random.shuffle(combined_data)
             perm_group_a = combined_data[:len(self.train_data)]
             perm_group_b = combined_data[len(self.train_data):]
-            perm_statistic = self.metric(train_data=perm_group_a,
-                                         target_data=perm_group_b,
-                                         wass_p=wass_p,
-                                         num_bins=num_bins,
-                                         min_bin_prob=min_bin_prob,
-                                         num_samples=num_samples, use=use,
-                                         type_=type_)
-            permuted_stats.append(perm_statistic)
 
-        test_p_value = np.abs(permuted_stats) >= np.abs(observed_stat)
-        test_p_value = np.sum(test_p_value) / n_resamples
+            for j, type_ in enumerate(metrics):
+                # Ignore KS, we have that already
+                if type_ == "KS":
+                    continue
 
-        return int(test_p_value < p_value)
+                permuted_stats[j].append(self.metric(train_data=perm_group_a,
+                                                     target_data=perm_group_b,
+                                                     wass_p=wass_p,
+                                                     num_bins=num_bins,
+                                                     min_bin_prob=min_bin_prob,
+                                                     num_samples=num_samples,
+                                                     use=use, type_=type_,
+                                                     memoize=True))
+
+        for j, type_ in enumerate(metrics):
+            if type_ == "KS":
+                continue
+
+            test_p_value = np.mean(
+                np.abs(permuted_stats[j]) >= np.abs(observed_stat[j]))
+            result = (test_p_value, test_p_value < p_value)
+            results[j] = result
+
+        if is_list:
+            return results
+        else:
+            return results[0]
