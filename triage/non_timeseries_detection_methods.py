@@ -180,13 +180,22 @@ class DetectionMethods(object):
             # Here we are checking if the values have changed, even if asked
             # to memoize, the values should be calculated again if anything
             # has changed.
-            if train_data is not None and self.prev_train is not None:
+            #
+            # If we do not have previous data, always calculate
+            if self.prev_train is None:
+                self.train_d = None
+            elif train_data is not None:
                 if (abs(self.prev_train - train_data) > self.diff_tol).any():
                     self.train_d = None
-            if target_data is not None and self.prev_target is not None:
+
+            # Same as before but with the target data
+            if self.prev_target is None:
+                self.target_d = None
+            elif target_data is not None:
                 if (abs(self.prev_target - target_data) > self.diff_tol).any():
                     self.target_d = None
 
+            # Remember the new data
             self.prev_target = copy.copy(target_data)
             self.prev_train = copy.copy(train_data)
 
