@@ -109,9 +109,31 @@ def split_noise(noise, n_timesteps):
     return rsnoise
 
 
+def freq_gen(f_vec, df):
+    """
+    Generate collection of Voigt frequency signals based on Pandas data frame of parameter values.
+    Args:
+        f_vec: vector of frequency points
+        df: Pandas data frame containing signal parameter columns A, w, T2, phi, sigma, C, with N rows
+    Returns:
+        np.ndarray of signals, shape (N, len(f_vec))
+    """
+    freqs = np.zeros((df.shape[0], len(f_vec)))
+    for i in range(df.shape[0]):
+        freqs[i, :] = VoigtSignal(
+            df.w.iloc[i],
+            df.T2.iloc[i],
+            df.A.iloc[i],
+            df.phi.iloc[i],
+            df.sigma.iloc[i],
+            df.C.iloc[i],
+        ).freq_signal(f_vec)
+    return freqs
+
+
 def synthetic_data_gen(
     N=10000,
-    nt=1000,
+    nt=1024,
     fs=1.0 / 1.8e-05,
     w_range=[-50, 50],
     phi_range=[-np.pi, np.pi],
@@ -120,6 +142,7 @@ def synthetic_data_gen(
     A_range=[0.1, 1],
     s=1,
     seed=42,
+    f_vec=np.linspace(-100, 100, 1000),
 ):
     """
     Generating synthetic data with white noise
@@ -133,20 +156,15 @@ def synthetic_data_gen(
         T2_range & sigma_range : upper and lower bounds for generating the rate of decay, T2 & sigma
         A_range : upper and lower bounds for generating the initial amplitude, A
         s : variance for white noise generation
-        seed: random seed
-        data_split : data is split into three sets (60% training, 20% testing, 20% validation)
+        seed: random seed        
+        f_vec: frequency vector for freqs
+        t : corresponding time vector for sigs
     Outputs
-        clean_training : synthetic dataset of signal without noise (0.6*N samples)
-        noisy_training : synthetic dataset of signal with noise (0.6*N samples)
-        clean_validation : synthetic dataset of signal without noise (0.2*N samples)
-        noisy_validation : synthetic dataset of signal with noise (0.2*N samples)
-        clean_testing : synthetic dataset of signal without noise (0.2*N samples)
-        noisy_testing : synthetic dataset of signal with noise (0.2*N samples)
-        sig_params_training :  parameters used for generating training dataset
-        sig_params_validation : parameters used for generating validation dataset
-        sig_params_testing : parameters used for generating testing dataset
-        t : corresponding time vector for samples
-
+        df_in: df containing N, nt, fs, w, phi, T2, A, sigma, s, C, t, f_vec
+        df: df containing sigs, noise, noisy_sigs, freqs
+        sigs: time series voigt signals
+        noise: time series white noise
+        freqs: frequency series voigts signals
     """
 
     # Initializing Parameters
@@ -161,59 +179,38 @@ def synthetic_data_gen(
 
     # Signal Generation
     t = np.linspace(0, nt / fs, nt)
+    f_vec = np.linspace(-500, 500, nt)
     sigs = sig_gen(t, df)
+    freqs = freq_gen(f_vec, df)
 
     # Generate White Noise
     noise = wn_gen(t, N, sigma=s)
     snrs = compute_snr(sigs, noise)
-    df["snr"] = snrs
+    noisy_sig = sigs + noise
+    df_in = {
+        "N": N,
+        "nt": nt,
+        "fs": fs,
+        "w": w,
+        "phi": phi,
+        "T2": T2,
+        "A": A,
+        "sigma": sigma,
+        "s": s,
+        "C": C,
+        "t": t,
+        "f_vec": f_vec,
+    }
+    df_out = {
+        "snr": snrs,
+        "sigs": sigs,
+        "noise": noise,
+        "noisy_sig": noisy_sig,
+        "freqs": freqs,
+    }
 
-    # Save Clean/Noisy and Training/Validation separately
-    data_split1 = round(0.6 * N)
-    data_split2 = round(0.8 * N)
+    return df_in, df_out
 
-    clean_training = sigs[
-        :data_split1,
-    ]
-    noisy_training = noise[
-        :data_split1,
-    ]
-    sig_params_training = df.iloc[
-        :data_split1,
-    ]  
-
-    clean_validation = sigs[
-        data_split1:data_split2,
-    ]
-    noisy_validation = noise[
-        data_split1:data_split2,
-    ]
-    sig_params_validation = df.iloc[
-        data_split1:data_split2,
-    ]
-
-    clean_testing = sigs[
-        data_split2:,
-    ]
-    noisy_testing = noise[
-        data_split2:,
-    ]
-    sig_params_testing = df.iloc[
-        data_split2:,
-    ]
-
-    return (
-        clean_training,
-        noisy_training,
-        clean_validation,
-        noisy_validation,
-        clean_testing,
-        noisy_testing,
-        sig_params_training,
-        sig_params_validation,
-        sig_params_testing,
-        t,
-    )
 
 def plot_complex_ts(t, y, ax=None, **kwargs):
     """
@@ -221,5 +218,5 @@ def plot_complex_ts(t, y, ax=None, **kwargs):
     """
     if ax is None:
         ax = plt.gca()
-    for f, c in zip([np.real, np.imag], ['k', 'r']):
+    for f, c in zip([np.real, np.imag], ["k", "r"]):
         ax.plot(t, f(y), c, **kwargs, label=f.__name__)
