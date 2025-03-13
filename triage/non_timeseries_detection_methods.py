@@ -9,8 +9,8 @@ class DetectionMethods(object):
     Class that aggregates all detection methods
     """
 
-    def __init__(self, train_data, target_data, num_bins=20, num_samples=1000,
-                 p_value=5e-2, min_bin_prob=1e-10, n_resamples=1e5, wass_p=1,
+    def __init__(self, train_data, target_data, num_bins=20, num_samples=500,
+                 p_value=5e-2, min_bin_prob=1e-10, n_resamples=1000, wass_p=1,
                  diff_tol=1e-14):
         """
         Parameters:
@@ -18,13 +18,13 @@ class DetectionMethods(object):
         - target_data: A list of target data samples.
         - p_value: P value; default is 0.05.
         - num_samples: Number of points to sample for estimating distribution;
-            default=1000.
+            default=500.
         - num_bins: Number of bins for binning the data for calculating PSI;
             default is 20.
         - min_bin_prob: Minimum probability values used for a bin to avoid
             issues with empty bin (divide by 0 issues); default is 1*10^-10.
         - n_resamples: Number of permutations evaluated for the permutation
-            test; default is 100,000.
+            test; default is 1,000.
         - diff_tol: Difference tolerance to consider data different for
             memoization purposes
         """
@@ -68,7 +68,7 @@ class DetectionMethods(object):
 
         # Get maxima and minima of data
         all_data = np.concatenate((train_data, target_data))
-        return np.max(all_data), np.min(all_data)
+        return np.min(all_data), np.max(all_data)
 
     def __get_percent(self, train_data=None, target_data=None, num_bins=None,
                       min_bin_prob=None):
@@ -133,10 +133,10 @@ class DetectionMethods(object):
         if num_samples is None:
             num_samples = self.num_samples
 
-        _, max_ = self.__data_range(train_data=train_data,
-                                    target_data=target_data)
+        min_, max_ = self.__data_range(train_data=train_data,
+                                       target_data=target_data)
 
-        vals = np.linspace(0, max_, num_samples)
+        vals = np.linspace(min_, max_, num_samples)
 
         # Train data distribution
         train_d = sp.stats.gaussian_kde(train_data).evaluate(vals)
@@ -173,47 +173,50 @@ class DetectionMethods(object):
         if target_data is None:
             target_data = self.target_data
 
-        if not memoize:
-            self.train_d = None
-            self.target_d = None
-        else:
-            # Here we are checking if the values have changed, even if asked
-            # to memoize, the values should be calculated again if anything
-            # has changed.
-            #
-            # If we do not have previous data, always calculate
-            if self.prev_train is None:
+        need_dist_estimates = type_ in ["PSI", "JS"]
+
+        if need_dist_estimates:
+            # need to calculate distribution estimates
+            if not memoize:
                 self.train_d = None
-            elif (abs(self.prev_train - train_data) > self.diff_tol).any():
-                self.train_d = None
-
-            # Same as before but with the target data
-            if self.prev_target is None:
                 self.target_d = None
-            elif (abs(self.prev_target - target_data) > self.diff_tol).any():
-                self.target_d = None
+            else:
+                # Here we are checking if the values have changed, even if
+                # asked to memoize, the values should be calculated again if
+                # anything has changed.
+                #
+                # If we do not have previous data, always calculate
+                if self.prev_train is None:
+                    self.train_d = None
+                elif (abs(self.prev_train - train_data) > self.diff_tol).any():
+                    self.train_d = None
 
-            # Remember the new data
-            self.prev_target = copy.copy(target_data)
-            self.prev_train = copy.copy(train_data)
+                # Same as before but with the target data
+                if self.prev_target is None:
+                    self.target_d = None
+                elif (abs(self.prev_target - target_data) > self.diff_tol).any():
+                    self.target_d = None
 
-        # Train and target percentages or distributions
-        if self.train_d is None or self.target_d is None:
-            if use == "histogram":
-                train_d, target_d = self.__get_percent(train_data=train_data,
-                                                       target_data=target_data,
-                                                       num_bins=num_bins,
-                                                       min_bin_prob=min_bin_prob)
-            elif use == "kde":
-                train_d, target_d = self.__get_distrib(train_data=train_data,
-                                                       target_data=target_data,
-                                                       num_samples=num_samples)
-            elif type_ != "KS":
-                e = "Provide a use parameter: 'histogram' or 'kde'"
-                raise Exception(e)
+                # Remember the new data
+                self.prev_target = copy.copy(target_data)
+                self.prev_train = copy.copy(train_data)
 
-            self.train_d = train_d
-            self.target_d = target_d
+            # Train and target percentages or distributions
+            if self.train_d is None or self.target_d is None:
+                if use == "histogram":
+                    train_d, target_d = self.__get_percent(train_data=train_data,
+                                                           target_data=target_data,
+                                                           num_bins=num_bins,
+                                                           min_bin_prob=min_bin_prob)
+                elif use == "kde":
+                    train_d, target_d = self.__get_distrib(train_data=train_data,
+                                                           target_data=target_data,
+                                                           num_samples=num_samples)
+                else:
+                    e = "Provide a use parameter: 'histogram' or 'kde'"
+                    raise Exception(e)
+                self.train_d = train_d
+                self.target_d = target_d
 
         if type_ == "PSI":
             value = np.sum((self.train_d - self.target_d) *
@@ -224,19 +227,17 @@ class DetectionMethods(object):
         elif type_ == "WD":
             if wass_p is None:
                 wass_p = self.wass_p
+            d1sort = np.sort(train_data)
+            d2sort = np.sort(target_data)
+            value = np.mean(np.abs(d1sort - d2sort) ** wass_p)
+            value **= 1 / wass_p
 
-            if wass_p == 1:
-                value = sp.stats.wasserstein_distance(self.train_d,
-                                                      self.target_d)
-            else:
-                value = np.mean(np.abs(self.train_d - self.target_d) ** wass_p)
-                value **= 1 / wass_p
         elif type_ == "KS":
             ks_test_result = sp.stats.kstest(train_data, target_data,
                                              alternative='two-sided')
             value = ks_test_result.statistic
         else:
-            e = "Provide a type_ parameter: 'PSI', 'JS', or 'WD'"
+            e = "Provide a type_ parameter: 'PSI', 'JS', 'WD', or 'KS'"
             raise Exception(e)
 
         return value
