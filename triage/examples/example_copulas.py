@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 
-from triage.generate_timeseries import Clayton
+from triage import ClaytonCopula
 
 
 def run_example():
@@ -11,7 +11,7 @@ def run_example():
     t = 1000  # length of time series (arbitrary units)
 
     # Generate copula sublcass paramter and markovian time series property
-    cop = Clayton(alpha=10, markovian=True)
+    cop = ClaytonCopula(alpha=10, markovian=True)
 
     # Define the marginal distribution for the time series
     cop.define_marginal(marginal_family="gamma", loc=None, scale=None)

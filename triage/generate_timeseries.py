@@ -530,7 +530,7 @@ class Copula(TimeSeries):
         return x
 
 
-class Clayton(Copula):
+class ClaytonCopula(Copula):
     """
     Clayton: lower tail dependence (strong dependence at (U, V)≈(0,0)). The
     level of dependence increases as α increases. bounds: [-1, inf). This code
@@ -571,7 +571,7 @@ class Clayton(Copula):
         return p
 
 
-class Joe(Copula):
+class JoeCopula(Copula):
     """
     Joe:  upper tail dependence (strong dependence at (U, V)≈(1,1)). The level
     of dependence increases as α increases.
@@ -646,7 +646,7 @@ class Joe(Copula):
         return term1 + term2 * term3
 
 
-class Frank(Copula):
+class FrankCopula(Copula):
     """
     Frank: A negative value of α gives negative dependence while a positive
     value of α gives positive dependence between U and V.
@@ -694,7 +694,7 @@ class Frank(Copula):
         return num / den
 
 
-class Normal(Copula):
+class NormalCopula(Copula):
     """
     Normal: the parameter specified controls the correlation, bounds: (-1,1)
     """

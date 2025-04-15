@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from triage.generate_timeseries import HSMM
+from triage import HSMM
 
 
 def run_example():
