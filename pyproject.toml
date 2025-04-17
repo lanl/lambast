@@ -14,6 +14,11 @@ dependencies = [
     "pandas",
     "seaborn",
     "ruptures",
+    "torch",
+    "pyod",
+    "tqdm",
+    "devito",
+    "pytest",
 ]
 authors = [
     {name = "Natalie Elizabeth Klein", email = "neklein@lanl.gov"},
