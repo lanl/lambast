@@ -5,5 +5,5 @@ from .generate_timeseries import (HSMM, ClaytonCopula, FrankCopula, JoeCopula,
 from .generate_voigt_signal_data import (compute_snr, plot_complex_ts, sig_gen,
                                          synthetic_data_gen)
 from .non_timeseries_detection_methods import DetectionMethods
-from .timing import timing
-from .util import is_valid_covariance
+from .timing import Timing
+from .util import assert_valid_covariance

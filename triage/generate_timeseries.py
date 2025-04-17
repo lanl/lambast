@@ -5,24 +5,30 @@ Time series generation classes.
 
 import copy
 import warnings
+from typing import Self
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.typing import NDArray
 from scipy import stats
+from scipy.optimize import fsolve
 from scipy.stats import truncnorm
 
-from .util import is_valid_covariance
+from .util import assert_valid_covariance
 
 
 class TimeSeries:
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         TimeSeries base class.
 
         """
 
-    def sample(self, n, t, *args, **kwargs):
+        return None
+
+    def sample(self, n: int, t: int, *args, **kwargs
+               ) -> NDArray | tuple[list[NDArray], list[NDArray]]:
         """
         Sample `n` time series with `t` time points from the TimeSeries model.
 
@@ -35,21 +41,23 @@ class TimeSeries:
 
 class LinearSSM(TimeSeries):
 
-    def __init__(self, state_matrix, state_noise_cov, obs_matrix,
-                 obs_noise_cov, rng=None, scale_matrix=False):
+    def __init__(self, state_matrix: NDArray, state_noise_cov: NDArray,
+                 obs_matrix: NDArray, obs_noise_cov: NDArray,
+                 rng: np.random.Generator | None = None,
+                 scale_matrix: bool = False) -> None:
         """
         Initializes a new instance of a Linear State Space Model.
         State dimension is d, observation dimension is p.
         Assume zero-mean Gaussian noise in state and observation space.
 
         Parameters:
-            state_matrix (np.ndarray): shape (d,d) numpy array defining state
+            state_matrix: shape (d,d) numpy array defining state
                 transition matrix
-            state_noise_cov (np.ndarray): shape (d,d) numpy array defining
+            state_noise_cov: shape (d,d) numpy array defining
                 state noise covariance
-            obs_matrix (np.ndarray): shape (p,d) numpy array defining
+            obs_matrix: shape (p,d) numpy array defining
                 observation matrix
-            obs_noise_cov (np.ndarray): shape (p,p) numpy array defininig
+            obs_noise_cov: shape (p,p) numpy array defininig
                 observation noise covariance
             rng: numpy rng (else use default); see
                 https://numpy.org/doc/2.0/reference/random/index.html#random-quick-start
@@ -76,8 +84,8 @@ class LinearSSM(TimeSeries):
         self.rescale_matrix(scale_matrix)
 
         # Check if covariance matrices are valid
-        is_valid_covariance(state_noise_cov)
-        is_valid_covariance(obs_noise_cov)
+        assert_valid_covariance(state_noise_cov)
+        assert_valid_covariance(obs_noise_cov)
 
         # Check shapes
         if state_matrix.shape[0] != state_matrix.shape[1]:
@@ -89,12 +97,12 @@ class LinearSSM(TimeSeries):
         if obs_noise_cov.shape[0] != self.p:
             raise ValueError("Obs cov matrix is not (d,d)")
 
-    def rescale_matrix(self, scale_matrix):
+    def rescale_matrix(self, scale_matrix: bool) -> None:
         """
         Function that re-scales the state matrix to make it stable
 
         Parameter:
-            scale_matrix (bool): Whether to rescale the state matrix
+            scale_matrix: Whether to rescale the state matrix
         """
         eigenvalues = np.linalg.eigvals(self.state_matrix)
         spectral_radius = np.max(np.abs(eigenvalues))
@@ -104,7 +112,7 @@ class LinearSSM(TimeSeries):
             else:
                 warnings.warn('Warning: state_matrix is not stable.')
 
-    def copy_with_changes(self, **kwargs):
+    def copy_with_changes(self, **kwargs) -> Self:
         """
         Copy the initial parameters of this object into another object. Allow
         kwargs to change the initial values of the copy object.
@@ -123,7 +131,7 @@ class LinearSSM(TimeSeries):
 
         return other
 
-    def evolve_state(self, state):
+    def evolve_state(self, state: NDArray) -> NDArray:
         """
         Docstring TODO
         """
@@ -133,7 +141,7 @@ class LinearSSM(TimeSeries):
 
         return self.state_matrix @ state + draws
 
-    def get_obs(self, state):
+    def get_obs(self, state: NDArray) -> NDArray:
         """
         Docstring TODO
         """
@@ -143,19 +151,18 @@ class LinearSSM(TimeSeries):
 
         return self.obs_matrix @ state + draws
 
-    def sample(self, n, t, init_mean=None, init_cov=None):
+    def sample(self, n: int, t: int, init_mean: NDArray | None = None,
+               init_cov: NDArray | None = None) -> NDArray:
         """
         Samples from LinearSSM with initial state sampled from Gaussian with
         init_mean and init_cov.
         Default: mean zero with unit variance.
 
         Parameters:
-            n (int): number of time series replicates to sample
-            t (int): number of time points in each time series
-            init_mean (np.ndarray): shape (d,1) mean values for initial state
-                sampling
-            init_cov (np.ndarray): shape (d,1) covariance for initial state
-                sampling
+            n: number of time series replicates to sample
+            t: number of time points in each time series
+            init_mean: shape (d,1) mean values for initial state sampling
+            init_cov: shape (d,1) covariance for initial state sampling
 
         Returns:
             Numpy array of shape (n,p,t) representing generated time series
@@ -177,7 +184,7 @@ class LinearSSM(TimeSeries):
 
         return self.ts_samples
 
-    def plot_sample(self):
+    def plot_sample(self) -> None:
         """
         Plot the time series sample
         """
@@ -196,8 +203,10 @@ class LinearSSM(TimeSeries):
 
 class HSMM(TimeSeries):
 
-    def __init__(self, init_probs, transition_probs, emission_means,
-                 emission_covariances, state_durations_params):
+    def __init__(self, init_probs: NDArray, transition_probs: NDArray,
+                 emission_means: list[NDArray],
+                 emission_covariances: list[NDArray],
+                 state_durations_params: list[tuple]) -> None:
         """
         Initialize the Hidden Semi-Markov Model with multivariate emissions.
 
@@ -257,7 +266,9 @@ class HSMM(TimeSeries):
                 e = "Each covariance matrix must be positive semi-definite."
                 raise ValueError(e)
 
-    def truncated_discrete_normal(self, mean, std, min_val, max_val, size=1):
+    def truncated_discrete_normal(self, mean: float, std: float,
+                                  min_val: float, max_val: float,
+                                  size: int = 1) -> NDArray:
         """
         Sample from a truncated discrete normal distribution.
 
@@ -277,7 +288,7 @@ class HSMM(TimeSeries):
 
         return np.clip(np.round(samples), min_val, max_val).astype(int)
 
-    def sample(self, n, t):
+    def sample(self, n: int, t: int) -> tuple[list[NDArray], list[NDArray]]:
         """
         Generate n time series of length t from the Hidden Semi-Markov Model
         with multivariate emissions.
@@ -297,7 +308,7 @@ class HSMM(TimeSeries):
         states = []
 
         for _ in range(n):
-            sequence = []
+            sequence: list[NDArray] = []
             state_sequence = []
 
             # Start in a random initial state
@@ -337,16 +348,16 @@ class HSMM(TimeSeries):
 
 class Copula(TimeSeries):
 
-    def __init__(self, alpha=None, markovian=True):
+    def __init__(self, alpha: float | None = None,
+                 markovian: bool = True) -> None:
         """
         Initializes a new instance of a Copula.
 
         Parameters:
-            alpha (np.ndarray): parameter controlling the copula, currently
-                only archimedian copulas are implemented
-            markovian: boolean, default True, if True, then the
-                copula samples have a markovian process property, i.e.
-                correlated in time.
+            alpha: parameter controlling the copula, currently only
+                archimedian copulas are implemented
+            markovian: default True, if True, then the copula samples have a
+                markovian process property, i.e. correlated in time.
         The functions here-in rely heavily on Chapter 2 of the book:
             Sun, Li-Hsien, et al. Copula-Based Markov Models for Time Series:
             Parametric Inference and Process Control,
@@ -357,27 +368,27 @@ class Copula(TimeSeries):
         self.markovian = markovian
 
         # Family that will be defined by instance of subclass
-        self.copula_family = None
+        self.copula_family: str | None = None
 
-    def define_marginal(self, marginal_family="uniform", loc=None, scale=None):
+    def define_marginal(self, marginal_family: str = "uniform",
+                        loc: float | None = None,
+                        scale: float | None = None) -> None:
         """
         Method to instantiate the desired marginal distribution qualities.
 
         Arguments:
             marginal_family: string, choices include:
                 "uniform", "normal", "gamma", "t", "gumbel", "exponential"
-            loc: float64 (any number), location parameter for distributions
-                that accept them
-                for exponential, loc corresponds to rate
-                for t, loc corresponds to degrees of freedom
-            scale: float64 (any number), scale parameter for distributions
-                that accept them
+            loc: location parameter for distributions that accept them for
+                exponential, loc corresponds to rate for t, loc corresponds
+                to degrees of freedom
+            scale: scale parameter for distributions that accept them
         """
         self.marginal_family = marginal_family
         self.loc = loc
         self.scale = scale
 
-    def variable_generator(self, u, w):
+    def variable_generator(self, u: NDArray, w: NDArray) -> NDArray:
         """
         The variable_generator used for the copula model to produce
         realizations from its PDF.
@@ -389,7 +400,8 @@ class Copula(TimeSeries):
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def variable(self, u=None, w=None, *args):
+    def variable(self, u: NDArray | None = None, w: NDArray | None = None,
+                 *args) -> float | NDArray:
         """
         Provides variables u and w to the copula variable_generator and returns
         the variable v such that (U,V) is a realization of the copula model.
@@ -407,7 +419,7 @@ class Copula(TimeSeries):
 
         return self.variable_generator(u, w)
 
-    def sample(self, n=1, t=1000):
+    def sample(self, n: int = 1, t: int = 1000) -> NDArray:
         """
         Generate n samples from a bivariate copula distribution with marginal
         family specified.
@@ -416,8 +428,8 @@ class Copula(TimeSeries):
         copula. The marginal distribution will be uniform.
 
         Parameters:
-            n: integer, number of samples to draw of length t
-            t: integer, number of time points
+            n: number of samples to draw of length t
+            t: number of time points
         Returns ndarray of random variables of shape [n, t]
         """
         # Initialize empty matrix
@@ -439,7 +451,7 @@ class Copula(TimeSeries):
 
         return self.samples
 
-    def density_generator(self, u, v):
+    def density_generator(self, u: NDArray, v: NDArray) -> NDArray:
         """
         The joint density of the bivariate copula
 
@@ -449,25 +461,27 @@ class Copula(TimeSeries):
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def density(self, u=None, v=None, n_samples=2000):
+    def density(self, u: NDArray | None = None, v: NDArray | None = None,
+                n_samples: int = 2000) -> tuple[NDArray, NDArray, NDArray]:
         """
         Function to call the density_generator function specific to each
         copula. If no arguments are given, then provides a meshgrid that can
         easily be passed to plt.contour()
 
         Arguments:
-            u: np.array()
-            v: np.array() of same size as u
-            n_samples: int, number of samples to draw if neither u or v are
-                given
+            u: array
+            v: array of same size as u
+            n_samples: number of samples to draw if neither u or v are given
             Must provide both u and v or neither u and v.
         Returns u, v, p with p being the density values
         """
-        if (u is None) and (v is None):
+
+        if u is None and v is None:
             u_vec = np.linspace(0.001, 0.999, n_samples)
             v_vec = np.linspace(0.001, 0.999, n_samples)
             u, v = np.meshgrid(u_vec, v_vec)
-        elif None in [u, v]:
+
+        if u is None or v is None:
             e = "Must provide both u and v or neither u and v."
             raise ValueError(e)
 
@@ -475,7 +489,7 @@ class Copula(TimeSeries):
 
         return u, v, p
 
-    def uniform_to_marginal(self, uniform_samples):
+    def uniform_to_marginal(self, uniform_samples: NDArray) -> NDArray:
         """
         Convert the data to the uniform marginals to have a marginal
         distribution of interest.
@@ -485,7 +499,7 @@ class Copula(TimeSeries):
         scale parameters if None was provided.
 
         Arguments:
-            uniform_samples: np.array() of samples between (0,1)
+            uniform_samples: array of samples between (0,1)
         Returns samples after being passed through the marginal distribution.
         """
         if self.marginal_family == "uniform":
@@ -549,22 +563,27 @@ class ClaytonCopula(Copula):
     dependence except for some special examples (e.g., Emura et al. 2011)."
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.copula_family = "Clayton"
+
+        assert self.alpha is not None
         if (self.alpha <= -1) | (self.alpha == 0):
             e = "Parameter bounds may be [-1, inf) and not 0 for Clayton "
             e += "copula. This code does not support alpha = -1"
             raise ValueError(e)
 
-    def variable_generator(self, u, w):
+    def variable_generator(self, u: NDArray, w: NDArray) -> NDArray:
+
+        assert self.alpha is not None
         v = ((w ** (-self.alpha / (self.alpha + 1)) - 1)
              * u ** (-self.alpha) + 1) ** (-1 / self.alpha)
 
         return v
 
-    def density_generator(self, u, v):
+    def density_generator(self, u: NDArray, v: NDArray) -> NDArray:
         # Bivariate density
+        assert self.alpha is not None
         p = (1 + self.alpha) * (u * v) ** (-self.alpha - 1)
         p *= (u ** -self.alpha + v ** -self.alpha - 1) ** (-1/self.alpha - 2)
 
@@ -581,9 +600,11 @@ class JoeCopula(Copula):
     bounds: [1, inf).
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.copula_family = "Joe"
+
+        assert self.alpha is not None
         if self.alpha < 1:
             e = "Parameter bounds may be [1, inf) for Joe copula"
             raise ValueError(e)
@@ -593,15 +614,16 @@ class JoeCopula(Copula):
             w += "this value."
             warnings.warn(w)
 
-    def solver(self, v, u, w):
+    def solver(self, v: NDArray, u: NDArray, w: NDArray) -> NDArray:
         """
         Solver function for the joe copula.
         Parameters:
-            v: np.ndarray of places to initialize solver
+            v: array of places to initialize solver
             u: uniform variable
             w: uniform variable
         """
 
+        assert self.alpha is not None
         term1 = (1 - u) ** self.alpha + (1 - v) ** self.alpha
         term1 -= ((1 - u) * (1 - v)) ** self.alpha
         term1 **= 1 / self.alpha - 1
@@ -610,8 +632,7 @@ class JoeCopula(Copula):
 
         return term1 * term2 - w
 
-    def variable_generator(self, u, w):
-        from scipy.optimize import fsolve
+    def variable_generator(self, u: NDArray, w: NDArray) -> NDArray:
 
         # First, get a good spot for initializing the solver
         ntry = 1000
@@ -627,9 +648,10 @@ class JoeCopula(Copula):
 
         return roots[0]
 
-    def density_generator(self, u, v):
+    def density_generator(self, u: NDArray, v: NDArray) -> NDArray:
 
         # Precalculate common factors
+        assert self.alpha is not None
         product = (1 - u) * (1 - v)
         common = (1 - u) ** self.alpha + (1 - v) ** self.alpha
         common -= product ** self.alpha
@@ -658,9 +680,11 @@ class FrankCopula(Copula):
     copula when α → 0.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.copula_family = "Frank"
+
+        assert self.alpha is not None
         if self.alpha == 0:
             e = "Parameter bounds may be (-inf, inf) but not 0 for "
             e += "Frank copula"
@@ -671,7 +695,9 @@ class FrankCopula(Copula):
             w += "below 500."
             warnings.warn(w)
 
-    def variable_generator(self, u, w):
+    def variable_generator(self, u: NDArray, w: NDArray) -> NDArray:
+
+        assert self.alpha is not None
         term1 = -1 / self.alpha
         lognum = np.exp(-self.alpha * u) - w * \
             np.exp(-self.alpha * u) + w * np.exp(-self.alpha)
@@ -683,8 +709,9 @@ class FrankCopula(Copula):
 
         return term1 * (np.log(lognum) - np.log(logden))
 
-    def density_generator(self, u, v):
+    def density_generator(self, u: NDArray, v: NDArray) -> NDArray:
 
+        assert self.alpha is not None
         num = self.alpha * (1 - np.exp(-self.alpha)) * \
             np.exp(-self.alpha * (u + v))
         den = (np.exp(-self.alpha) - 1 + (np.exp(-self.alpha * u) - 1)
@@ -699,26 +726,30 @@ class NormalCopula(Copula):
     Normal: the parameter specified controls the correlation, bounds: (-1,1)
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        # super().__init__()
         self.copula_family = "Normal"
+
+        assert self.alpha is not None
         if np.abs(self.alpha) > 1:
             e = "Parameter bounds may be (-1,1) for Normal copula"
             raise ValueError(e)
 
-    def variable_generator(self, u, w):
+    def variable_generator(self, u: NDArray, w: NDArray) -> NDArray:
         psi_i_k = stats.norm.ppf(w)
         psi_i_u = stats.norm.ppf(u)
+
+        assert self.alpha is not None
         inner_term = psi_i_k * \
             np.sqrt(1 - self.alpha ** 2) + self.alpha * psi_i_u
         v = stats.norm.cdf(inner_term)
         return v
 
-    def density_generator(self, u, v):
+    def density_generator(self, u: NDArray, v: NDArray) -> NDArray:
         psi_i_u = stats.norm.ppf(u)
         psi_i_v = stats.norm.ppf(v)
 
+        assert self.alpha is not None
         term1 = 1 / np.sqrt(1 - self.alpha**2)
 
         # Note, in the following term, the book has a sign wrong, this has

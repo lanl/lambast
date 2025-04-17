@@ -4,37 +4,37 @@ Generate complex-valued NQR signals using Voigt model.
 Authors: Natalie Klein, Amber Day
 """
 
+from dataclasses import dataclass
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 from scipy.special import wofz
 
 
+@dataclass
 class VoigtSignal:
     """
-    Voigt signal model.
+    Voigt signal model. If sigma=np.inf, recover FID signal model.
+    Args:
+        freq: frequency (Hz)
+        decay_rate: time decay constant
+        amp: amplitude constant
+        phi: phase shift constant
+        sigma: shape constant
+        const: constant shift
     """
 
-    def __init__(self, freq, decay_rate, amp, phi, sigma, const):
-        """
-        Voigt signal model. If sigma=np.inf, recover FID signal model.
-        Args:
-            freq: frequency (Hz)
-            decay_rate: time decay constant
-            amp: amplitude constant
-            phi: phase shift constant
-            sigma: shape constant
-            const: constant shift
-        """
+    freq: float
+    decay_rate: float
+    amp: float
+    phi: float
+    sigma: float
+    const: float
 
-        self.freq = freq
-        self.decay_rate = decay_rate
-        self.amp = amp
-        self.phi = phi
-        self.sigma = sigma
-        self.const = const
-
-    def time_signal(self, t):
+    def time_signal(self, t: NDArray[np.float64]) -> NDArray[np.complex64]:
         """
         Return complex-valued time-domain signal given time vector t.
         """
@@ -45,7 +45,7 @@ class VoigtSignal:
 
         return self.amp * exp1 * exp2 * exp3 + self.const
 
-    def freq_signal(self, f_vec):
+    def freq_signal(self, f_vec: NDArray[np.float64]) -> NDArray[np.float64]:
         """
         Return real-valued frequency-domain representation given
         frequency vector f_vec.
@@ -58,7 +58,8 @@ class VoigtSignal:
         return fit / np.max(fit)
 
 
-def compute_snr(sig, noise):
+def compute_snr(sig: NDArray[np.complex64],
+                noise: NDArray[np.complex64]) -> NDArray[np.complex64]:
     """
     Compute SNR empirically given signal and noise data.
     """
@@ -69,7 +70,8 @@ def compute_snr(sig, noise):
     return 10.0 * np.log10(sig_var / noise_var)
 
 
-def freq_or_sig_gen(vector, df, mode):
+def freq_or_sig_gen(vector: NDArray[np.float64], df: pd.DataFrame,
+                    mode: str) -> NDArray[np.float64] | NDArray[np.complex64]:
     """
     Function factoring out the common parts of sig_gen and freq_gen
     Args:
@@ -82,6 +84,7 @@ def freq_or_sig_gen(vector, df, mode):
     """
 
     assert mode in ["time", "freq"]
+    dtype: type[complex] | type[float]
 
     if mode == "time":
         dtype = complex
@@ -90,8 +93,9 @@ def freq_or_sig_gen(vector, df, mode):
 
     result = np.zeros((df.shape[0], len(vector)), dtype=dtype)
     for i in range(df.shape[0]):
-        signal = VoigtSignal(df.w.iloc[i], df.T2.iloc[i], df.A.iloc[i],
-                             df.phi.iloc[i], df.sigma.iloc[i], df.C.iloc[i])
+        signal = VoigtSignal(df.freq.iloc[i], df.decay_rate.iloc[i],
+                             df.amp.iloc[i], df.phi.iloc[i], df.sigma.iloc[i],
+                             df.const.iloc[i])
     if mode == "time":
         result[i, :] = signal.time_signal(vector)
     elif mode == "freq":
@@ -100,7 +104,7 @@ def freq_or_sig_gen(vector, df, mode):
     return result
 
 
-def sig_gen(t, df):
+def sig_gen(t: NDArray, df: pd.DataFrame) -> NDArray:
     """
     Generate collection of Voigt time series signals based on Pandas data
     frame of parameter values.
@@ -115,7 +119,7 @@ def sig_gen(t, df):
     return freq_or_sig_gen(t, df, mode="time")
 
 
-def freq_gen(f_vec, df):
+def freq_gen(f_vec: NDArray, df: pd.DataFrame) -> NDArray:
     """
     Generate collection of Voigt frequency signals based on Pandas data frame
     of parameter values.
@@ -130,7 +134,7 @@ def freq_gen(f_vec, df):
     return freq_or_sig_gen(f_vec, df, mode="freq")
 
 
-def white_noise_gen(t, N, sigma=1.0):
+def white_noise_gen(t: NDArray, N: int, sigma: float = 1.0) -> NDArray:
     """
     Generate complex Gaussian white noise time series of shape (N, t) with
     total variance sigma.
@@ -148,6 +152,8 @@ def split_noise(noise, n_timesteps):
     shorter examples
     """
 
+    # TEST: does this work for an edge case
+    # where (noise.shape[1] % n_timesteps) == 0?
     nseg = noise.shape[1] // n_timesteps
     noise = noise[:, : (nseg * n_timesteps)]
     snoise = np.stack(np.hsplit(noise, nseg), axis=1)
@@ -156,11 +162,17 @@ def split_noise(noise, n_timesteps):
     return rsnoise
 
 
-def synthetic_data_gen(N=10000, nt=1024, fs=1.0 / 1.8e-05,
-                       freq_range=[-50, 50], phi_range=[-np.pi, np.pi],
-                       decay_rate_range=[1e-3, 1e-2], sigma_range=[1e-3, 1e-2],
-                       A_range=[0.1, 1], s=1, seed=42,
-                       f_vec=np.linspace(-100, 100, 1000)):
+def synthetic_data_gen(N: int = 10000, nt: int = 1024,
+                       fs: float = 1.0 / 1.8e-05,
+                       freq_range: tuple[float, float] = (-50, 50),
+                       phi_range: tuple[float, float] = (-np.pi, np.pi),
+                       decay_rate_range: tuple[float, float] = (1e-3, 1e-2),
+                       sigma_range: tuple[float, float] = (1e-3, 1e-2),
+                       amp_range: tuple[float, float] = (0.1, 1),
+                       noise_var: float = 1,
+                       seed: int = 42,
+                       f_vec: NDArray = np.linspace(-100, 100, 1000)
+                       ) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Generating synthetic data with white noise
 
@@ -174,7 +186,7 @@ def synthetic_data_gen(N=10000, nt=1024, fs=1.0 / 1.8e-05,
         sigma_range : upper and lower bounds for generating the sigma
         amp_range : upper and lower bounds for generating the initial
             amplitude, amp
-        s : variance for white noise generation
+        noise_var : variance for white noise generation
         seed: random seed
         f_vec: frequency vector for freqs
         t : corresponding time vector for sigs
@@ -204,7 +216,7 @@ def synthetic_data_gen(N=10000, nt=1024, fs=1.0 / 1.8e-05,
     freqs = freq_gen(f_vec, df)
 
     # Generate White Noise
-    noise = white_noise_gen(t, N, sigma=s)
+    noise = white_noise_gen(t, N, sigma=noise_var)
     snrs = compute_snr(sigs, noise)
     noisy_sig = sigs + noise
     df_in = {
@@ -216,7 +228,7 @@ def synthetic_data_gen(N=10000, nt=1024, fs=1.0 / 1.8e-05,
         "decay_rate": decay_rate,
         "amp": amp,
         "sigma": sigma,
-        "s": s,
+        "noise_var": noise_var,
         "const": const,
         "t": t,
         "f_vec": f_vec,

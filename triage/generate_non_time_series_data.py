@@ -3,29 +3,31 @@ Classes to generate non-time series data.
 """
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 
 class BaseDataClass:
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Base class for non-timeseries data.
         """
 
         return None
 
-    def sample(self, num_samples, *args, **kwargs):
+    def sample(self, num_samples: int, *args,
+               **kwargs) -> ArrayLike | tuple[ArrayLike, ArrayLike]:
         """
         Sample `n` points from the BaseDataClass model.
 
         Parameters:
-        - num_samples (int): number of points to sample
+        num_samples: number of points to sample
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
 
 class MultivariateGaussian(BaseDataClass):
-    def __init__(self, mean, covariance):
+    def __init__(self, mean: ArrayLike, covariance: ArrayLike) -> None:
         """
         Initialize the Multivariate Gaussian model.
 
@@ -50,7 +52,7 @@ class MultivariateGaussian(BaseDataClass):
             e = "Covariance matrix must be positive semi-definite."
             raise ValueError(e)
 
-    def sample(self, num_samples=1):
+    def sample(self, num_samples: int = 1) -> ArrayLike:
         """
         Generate samples from the multivariate Gaussian distribution.
 
@@ -66,7 +68,8 @@ class MultivariateGaussian(BaseDataClass):
 
 
 class GaussianMixtureModel(BaseDataClass):
-    def __init__(self, weights, means, covariances):
+    def __init__(self, weights: ArrayLike, means: list[ArrayLike],
+                 covariances: list[ArrayLike]) -> None:
         """
         Initialize the Gaussian Mixture Model.
 
@@ -110,7 +113,7 @@ class GaussianMixtureModel(BaseDataClass):
                 e = "Each covariance matrix must be positive semi-definite."
                 raise ValueError(e)
 
-    def sample(self, num_samples=1):
+    def sample(self, num_samples: int = 1) -> tuple[ArrayLike, ArrayLike]:
         """
         Generate samples from the Gaussian Mixture Model.
 

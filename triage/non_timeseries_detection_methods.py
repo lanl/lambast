@@ -1,56 +1,58 @@
 import copy
+from dataclasses import dataclass
 
 import numpy as np
 import scipy as sp
+from numpy.typing import ArrayLike, NDArray
 
 
+@dataclass
 class DetectionMethods(object):
     """
     Class that aggregates all detection methods
+    Parameters:
+    - train_data: A list of training data samples.
+    - target_data: A list of target data samples.
+    - p_value: P value; default is 0.05.
+    - num_samples: Number of points to sample for estimating distribution;
+        default is 500.
+    - num_bins: Number of bins for binning the data for calculating PSI;
+        default is 20.
+    - min_bin_prob: Minimum probability values used for a bin to avoid
+        issues with empty bin (divide by 0 issues); default is 1*10^-10.
+    - n_resamples: Number of permutations evaluated for the permutation
+        test; default is 1,000.
+    - diff_tol: Difference tolerance to consider data different for
+        memoization purposes
     """
 
-    def __init__(self, train_data, target_data, num_bins=20, num_samples=500,
-                 p_value=5e-2, min_bin_prob=1e-10, n_resamples=1000, wass_p=1,
-                 diff_tol=1e-14):
+    train_data: NDArray | list[float]
+    target_data: NDArray | list[float]
+
+    num_bins: int = 20
+    num_samples: int = 500
+    p_value: float = 5e-2
+    min_bin_prob: float = 1e-10
+    n_resamples: int = 1000
+    wass_p: int = 1
+    diff_tol: float = 1e-14
+
+    def __post_init__(self) -> None:
         """
-        Parameters:
-        - train_data: A list of training data samples.
-        - target_data: A list of target data samples.
-        - p_value: P value; default is 0.05.
-        - num_samples: Number of points to sample for estimating distribution;
-            default=500.
-        - num_bins: Number of bins for binning the data for calculating PSI;
-            default is 20.
-        - min_bin_prob: Minimum probability values used for a bin to avoid
-            issues with empty bin (divide by 0 issues); default is 1*10^-10.
-        - n_resamples: Number of permutations evaluated for the permutation
-            test; default is 1,000.
-        - diff_tol: Difference tolerance to consider data different for
-            memoization purposes
+        These are variables used for resampling memoization. That way both
+        "self.train_data" and "self.target_data" can be kept unchanged from
+        one reshufling to the next. They also help to recognize when we cannot
+        rely on memoization and have to re-caculate the expensive values again.
         """
 
-        self.train_data = train_data
-        self.target_data = target_data
+        self.train_d: NDArray | None = None
+        self.target_d: NDArray | None = None
+        self.prev_train: NDArray | None = None
+        self.prev_target: NDArray | None = None
 
-        self.num_bins = num_bins
-        self.num_samples = num_samples
-        self.p_value = p_value
-        self.min_bin_prob = min_bin_prob
-        self.n_resamples = int(n_resamples)
-        self.wass_p = wass_p
-
-        # NOTE: These are variables used for resampling memoization. That way
-        # both "self.train_data" and "self.target_data" can be kept unchanged
-        # from one reshufling to the next. They also help to recognize when
-        # we cannot rely on memoization and have to re-caculate the expensive
-        # values again.
-        self.train_d = None
-        self.target_d = None
-        self.prev_train = None
-        self.prev_target = None
-        self.diff_tol = diff_tol
-
-    def __data_range(self, train_data=None, target_data=None):
+    def __data_range(self, train_data: ArrayLike | None = None,
+                     target_data: ArrayLike | None = None
+                     ) -> tuple[float, float]:
         """
         Retreive the data range
 
@@ -70,8 +72,11 @@ class DetectionMethods(object):
         all_data = np.concatenate((train_data, target_data))
         return np.min(all_data), np.max(all_data)
 
-    def __get_percent(self, train_data=None, target_data=None, num_bins=None,
-                      min_bin_prob=None):
+    def __get_percent(self, train_data: ArrayLike | None = None,
+                      target_data: ArrayLike | None = None,
+                      num_bins: int | None = None,
+                      min_bin_prob: float | None = None
+                      ) -> tuple[NDArray, NDArray]:
         """
         Common operations for histogram calculation
 
@@ -83,7 +88,7 @@ class DetectionMethods(object):
         - num_bins: Number of bins for binning the data for calculating PSI;
             default is 20.
         - min_bin_prob: Minimum probability values used for a bin to avoid
-            issues with empty bin (divide by 0 issues); default is 1*10^-10.
+            issues with empty bin (divide by 0 issues); default is 1e-10.
         """
 
         if train_data is None:
@@ -112,8 +117,10 @@ class DetectionMethods(object):
 
         return train_p, target_p
 
-    def __get_distrib(self, train_data=None, target_data=None,
-                      num_samples=None):
+    def __get_distrib(self, train_data: ArrayLike | None = None,
+                      target_data: ArrayLike | None = None,
+                      num_samples: int | None = None
+                      ) -> tuple[NDArray, NDArray]:
         """
         Common operations for kde calculation
 
@@ -146,27 +153,38 @@ class DetectionMethods(object):
 
         return train_d, target_d
 
-    def metric(self, train_data=None, target_data=None, num_bins=None,
-               min_bin_prob=None, num_samples=None, wass_p=None, use=None,
-               type_=None, memoize=False):
+    def metric(self, type_: str, use: str,
+               train_data: ArrayLike | None = None,
+               target_data: ArrayLike | None = None,
+               num_bins: int | None = None,
+               min_bin_prob: float | None = None,
+               num_samples: int | None = None,
+               wass_p: float | None = None,
+               memoize: bool = False) -> float:
         """
         Returns a given metric
 
         Parameters:
+        - type_: String, metric type, values: "PSI", "JS", "WD", "KS"
+        - use: String, either "histogram" or "kde"
         - train_data: A list of training data samples. Default value is given
             at initialization.
         - target_data: A list of target data samples. Default value is given
             at initialization.
         - num_samples: Number of points to sample for estimating distribution;
-            default=1000.
+            default value is given at initialization.
         - num_bins: Number of bins for binning the data for calculating PSI;
-            default is 20.
+            default value is given at initialization.
         - min_bin_prob: Minimum probability values used for a bin to avoid
-            issues with empty bin (divide by 0 issues); default is 1*10^-10.
-        - use: String, either "histogram" or "kde"
-        - type_: String, metric type, values: "PSI", "JS", "WD", "KS"
-        - wass_p: Wasserstein distance order; default is 1
+            issues with empty bin (divide by 0 issues); default value is given
+            at initialization.
+        - wass_p: Wasserstein distance order; default default value is given
+            at initialization.
+        - memoize: Wether to memoize or not, defaults to False
         """
+
+        assert type_ in ["PSI", "JS", "WD", "KS"]
+        assert use in ["histogram", "kde"]
 
         if train_data is None:
             train_data = self.train_data
@@ -194,29 +212,34 @@ class DetectionMethods(object):
                 # Same as before but with the target data
                 if self.prev_target is None:
                     self.target_d = None
-                elif (abs(self.prev_target - target_data) > self.diff_tol).any():
+                elif (abs(self.prev_target - target_data) >
+                      self.diff_tol).any():
                     self.target_d = None
 
                 # Remember the new data
+                assert type(target_data) is NDArray
+                assert type(train_data) is NDArray
                 self.prev_target = copy.copy(target_data)
                 self.prev_train = copy.copy(train_data)
 
             # Train and target percentages or distributions
             if self.train_d is None or self.target_d is None:
                 if use == "histogram":
-                    train_d, target_d = self.__get_percent(train_data=train_data,
-                                                           target_data=target_data,
-                                                           num_bins=num_bins,
-                                                           min_bin_prob=min_bin_prob)
+                    tup = self.__get_percent(train_data=train_data,
+                                             target_data=target_data,
+                                             num_bins=num_bins,
+                                             min_bin_prob=min_bin_prob)
                 elif use == "kde":
-                    train_d, target_d = self.__get_distrib(train_data=train_data,
-                                                           target_data=target_data,
-                                                           num_samples=num_samples)
+                    tup = self.__get_distrib(train_data=train_data,
+                                             target_data=target_data,
+                                             num_samples=num_samples)
                 else:
                     e = "Provide a use parameter: 'histogram' or 'kde'"
                     raise Exception(e)
-                self.train_d = train_d
-                self.target_d = target_d
+
+                self.train_d, self.target_d = tup
+
+        assert self.train_d is not None and self.target_d is not None
 
         if type_ == "PSI":
             value = np.sum((self.train_d - self.target_d) *
@@ -242,9 +265,14 @@ class DetectionMethods(object):
 
         return value
 
-    def data_shift_test(self, wass_p=None, num_bins=None, min_bin_prob=None,
-                        num_samples=None, n_resamples=None, p_value=None,
-                        use=None, metrics=None):
+    def data_shift_test(self, use: str, metrics: list[str] | str,
+                        wass_p: float | None = None,
+                        num_bins: int | None = None,
+                        min_bin_prob: float | None = None,
+                        num_samples: int | None = None,
+                        n_resamples: int | None = None,
+                        p_value: float | None = None
+                        ) -> list[tuple[float, bool]] | tuple[float, bool]:
         """
         Return tuple of p_value and boolean value equal to 1 if data shift is
         detected from "self.train_data" to "self.target_data" based on metric
@@ -254,20 +282,22 @@ class DetectionMethods(object):
         for each type of metric in the same order.
 
         Parameters:
-        - p_value: P value; default is 0.05.
-        - num_samples: Number of points to sample for estimating distribution;
-            default=1000.
-        - num_bins: Number of bins for binning the data for calculating PSI;
-            default is 20.
-        - min_bin_prob: Minimum probability values used for a bin to avoid
-            issues with empty bin (divide by 0 issues); default is 1*10^-10.
-        - n_resamples: Number of permutations evaluated for the permutation
-            test; default is 100,000.
         - use: String, either "histogram" or "kde"
         - metrics: String or list of strings, metric type, values: "PSI", "JS",
             "WD", "KS"
         - wass_p: Wasserstein distance order; default is 1
+        - num_bins: Number of bins for binning the data for calculating PSI;
+            default is 20.
+        - min_bin_prob: Minimum probability values used for a bin to avoid
+            issues with empty bin (divide by 0 issues); default is 1*10^-10.
+        - num_samples: Number of points to sample for estimating distribution;
+            default is 1000.
+        - n_resamples: Number of permutations evaluated for the permutation
+            test; default is 100,000.
+        - p_value: P value; default is 0.05.
         """
+
+        assert use in ["histogram", "kde"]
 
         if n_resamples is None:
             n_resamples = self.n_resamples
@@ -278,21 +308,24 @@ class DetectionMethods(object):
 
         is_list = type(metrics) is list
 
-        if not is_list:
-            metrics = [metrics]
+        if is_list:
+            metrics_list = metrics
+        else:
+            assert type(metrics) is str
+            metrics_list = [metrics]
 
-        observed_stat = []
-        permuted_stats = []
-        results = []
+        observed_stat: list[float] = []
+        permuted_stats: list[list[float]] = []
+        results: list[tuple[float, bool]] = []
 
         # Save the combined data here
         combined_data = np.concatenate((self.train_data, self.target_data))
 
-        for type_ in metrics:
+        for type_ in metrics_list:
 
-            observed_stat.append(None)
+            observed_stat.append(0.)
             permuted_stats.append([])
-            results.append(None)
+            results.append((0., False))
 
             if type_ == "KS":
                 ks_test_result = sp.stats.kstest(self.train_data,
@@ -305,31 +338,31 @@ class DetectionMethods(object):
                 results[-1] = result
                 continue
 
-            observed_stat[-1] = self.metric(wass_p=wass_p, num_bins=num_bins,
+            observed_stat[-1] = self.metric(type_, use, wass_p=wass_p,
+                                            num_bins=num_bins,
                                             min_bin_prob=min_bin_prob,
-                                            num_samples=num_samples, use=use,
-                                            type_=type_)
+                                            num_samples=num_samples)
 
         for i in range(n_resamples):
             np.random.shuffle(combined_data)
             perm_group_a = combined_data[:len(self.train_data)]
             perm_group_b = combined_data[len(self.train_data):]
 
-            for j, type_ in enumerate(metrics):
+            for j, type_ in enumerate(metrics_list):
                 # Ignore KS, we have that already
                 if type_ == "KS":
                     continue
 
-                permuted_stats[j].append(self.metric(train_data=perm_group_a,
+                permuted_stats[j].append(self.metric(type_, use,
+                                                     train_data=perm_group_a,
                                                      target_data=perm_group_b,
                                                      wass_p=wass_p,
                                                      num_bins=num_bins,
                                                      min_bin_prob=min_bin_prob,
                                                      num_samples=num_samples,
-                                                     use=use, type_=type_,
                                                      memoize=True))
 
-        for j, type_ in enumerate(metrics):
+        for j, type_ in enumerate(metrics_list):
             if type_ == "KS":
                 continue
 
