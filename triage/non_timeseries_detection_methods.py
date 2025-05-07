@@ -217,8 +217,8 @@ class DetectionMethods(object):
                     self.target_d = None
 
                 # Remember the new data
-                assert type(target_data) is NDArray
-                assert type(train_data) is NDArray
+                assert type(target_data) is np.ndarray
+                assert type(train_data) is np.ndarray
                 self.prev_target = copy.copy(target_data)
                 self.prev_train = copy.copy(train_data)
 
