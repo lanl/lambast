@@ -53,9 +53,9 @@ class VoigtSignal:
 
         exp_arg = (f_vec - self.freq + 1j * self.decay_rate)
         exp_arg /= (self.sigma * np.sqrt(2))
-        fit = self.amp * np.real(wofz(exp_arg)) / self.sigma
+        fit = np.real(wofz(exp_arg)) / self.sigma
 
-        return fit / np.max(fit)
+        return self.amp * fit / np.max(fit)
 
 
 def compute_snr(sig: NDArray[np.complex64],
@@ -96,10 +96,10 @@ def freq_or_sig_gen(vector: NDArray[np.float64], df: pd.DataFrame,
         signal = VoigtSignal(df.freq.iloc[i], df.decay_rate.iloc[i],
                              df.amp.iloc[i], df.phi.iloc[i], df.sigma.iloc[i],
                              df.const.iloc[i])
-    if mode == "time":
-        result[i, :] = signal.time_signal(vector)
-    elif mode == "freq":
-        result[i, :] = signal.freq_signal(vector)
+        if mode == "time":
+            result[i, :] = signal.time_signal(vector)
+        elif mode == "freq":
+            result[i, :] = signal.freq_signal(vector)
 
     return result
 
