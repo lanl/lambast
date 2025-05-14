@@ -13,12 +13,7 @@ dependencies = [
     "matplotlib",
     "statsmodels",
     "pandas",
-    "seaborn",
     "ruptures",
-    "torch",
-    "pyod",
-    "tqdm",
-    "pytest",
 ]
 authors = [
     {name = "Natalie Elizabeth Klein", email = "neklein@lanl.gov"},
