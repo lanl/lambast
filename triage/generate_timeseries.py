@@ -206,7 +206,8 @@ class HSMM(TimeSeries):
     def __init__(self, init_probs: NDArray, transition_probs: NDArray,
                  emission_means: list[NDArray],
                  emission_covariances: list[NDArray],
-                 state_durations_params: list[tuple]) -> None:
+                 state_durations_params: list[tuple],
+                 rng: np.random.Generator | None = None) -> None:
         """
         Initialize the Hidden Semi-Markov Model with multivariate emissions.
 
@@ -223,8 +224,15 @@ class HSMM(TimeSeries):
             state_durations_params: A list of tuples
                 [(mean, std, min, max), ...] representing the mean, standard
                 deviation, and truncation range for the duration of each state.
+            rng: numpy rng (else use default); see
+                https://numpy.org/doc/2.0/reference/random/index.html#random-quick-start
         """
         super().__init__()
+
+        if rng is None:
+            self.rng = np.random.default_rng()
+        else:
+            self.rng = rng
 
         self.init_probs = np.array(init_probs)
         self.transition_probs = np.array(transition_probs)
@@ -312,7 +320,7 @@ class HSMM(TimeSeries):
             state_sequence = []
 
             # Start in a random initial state
-            current_state = np.random.choice(num_states, p=self.init_probs)
+            current_state = self.rng.choice(num_states, p=self.init_probs)
             time = 0
 
             while time < t:
@@ -328,13 +336,13 @@ class HSMM(TimeSeries):
                 # Generate multivariate emissions for the duration
                 em = self.emission_means[current_state]
                 ec = self.emission_covariances[current_state]
-                emissions = np.random.multivariate_normal(em, ec, duration)
+                emissions = self.rng.multivariate_normal(em, ec, duration)
                 sequence.extend(emissions)
                 state_sequence.extend([current_state] * duration)
 
                 # Transition to the next state
                 tp = self.transition_probs[current_state]
-                next_state = np.random.choice(num_states, p=tp)
+                next_state = self.rng.choice(num_states, p=tp)
                 current_state = next_state
 
                 time += duration

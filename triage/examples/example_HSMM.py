@@ -31,8 +31,9 @@ def run_example():
     ]
 
     # Initialize the HSMM
+    rng = np.random.default_rng(seed=42)
     hsmm = HSMM(init_probs, transition_probs, emission_means,
-                emission_covariances, state_durations_params)
+                emission_covariances, state_durations_params, rng)
 
     # Generate time series data using above HSMM parameters
     samples, states = hsmm.sample(n, t)
