@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
 # Create virtual environment for the test
-testing_env=${HOME}/.local/python_envs/triage_testing_venv
+testing_env_dir=${HOME}/.local/python_envs
+testing_env=${testing_env_dir}/triage_testing_venv
 
 # Check if venv already exists
+mkdir -p ${testing_env_dir}
 if [[ ! -d ${testing_env} ]]; then
     python3 -m venv ${testing_env}
 fi
@@ -36,5 +38,6 @@ fi
 if [[ $install ]]; then
     python3 -m pip install mypy
     python3 -m pip install flake8
-    python3 -m pip install -e .
+    python3 -m pip install autopep8
+    python3 -m pip install -e $triage_parent_dir
 fi

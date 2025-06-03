@@ -3,13 +3,12 @@ import unittest
 import triage
 
 
+# NOTE: This structure is taken from the python documentation
+# Remove once we have actual unit tests
 class TestStringMethods(unittest.TestCase):
 
     def test_upper(self):
         self.assertEqual('foo'.upper(), 'FOO')
-
-        # Make one test fail to check
-        self.assertTrue(False)
 
     def test_isupper(self):
         self.assertTrue('FOO'.isupper())
@@ -22,6 +21,10 @@ class TestStringMethods(unittest.TestCase):
         with self.assertRaises(TypeError):
             s.split(2)
 
+    # NOTE: Make one test fail to check
+    # def test_fail(self):
+    #     self.assertTrue(False)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
