@@ -17,7 +17,7 @@ from scipy.stats import truncnorm
 from .util import assert_valid_covariance
 
 
-class TimeSeries:
+class TimeSeries(object):
 
     def __init__(self) -> None:
         """
@@ -292,7 +292,8 @@ class HSMM(TimeSeries):
         """
         a = (min_val - mean) / std
         b = (max_val - mean) / std
-        samples = truncnorm(a, b, loc=mean, scale=std).rvs(size=size)
+        samples = truncnorm(a, b, loc=mean, scale=std).rvs(
+            size=size, random_state=self.rng)
 
         return np.clip(np.round(samples), min_val, max_val).astype(int)
 
@@ -311,6 +312,7 @@ class HSMM(TimeSeries):
             states: A list of n numpy arrays, each of shape (t,), representing
                 the hidden state sequence.
         """
+
         num_states = len(self.emission_means)
         samples = []
         states = []
@@ -409,6 +411,7 @@ class Copula(TimeSeries):
         raise NotImplementedError("Subclasses must implement this method.")
 
     def variable(self, u: NDArray | None = None, w: NDArray | None = None,
+                 rng: np.random.Generator | None = None,
                  *args) -> float | NDArray:
         """
         Provides variables u and w to the copula variable_generator and returns
@@ -421,13 +424,14 @@ class Copula(TimeSeries):
             w: uniform variable between (0,1)
         """
         if u is None:
-            u = stats.uniform.rvs(0, 1)
+            u = stats.uniform.rvs(0, 1, random_state=rng)
         if w is None:
-            w = stats.uniform.rvs(0, 1)
+            w = stats.uniform.rvs(0, 1, random_state=rng)
 
         return self.variable_generator(u, w)
 
-    def sample(self, n: int = 1, t: int = 1000) -> NDArray:
+    def sample(self, n: int = 1, t: int = 1000,
+               rng: np.random.Generator | None = None) -> NDArray:
         """
         Generate n samples from a bivariate copula distribution with marginal
         family specified.
@@ -438,6 +442,7 @@ class Copula(TimeSeries):
         Parameters:
             n: number of samples to draw of length t
             t: number of time points
+            rng: optional, the random number generator
         Returns ndarray of random variables of shape [n, t]
         """
         # Initialize empty matrix
@@ -445,10 +450,10 @@ class Copula(TimeSeries):
 
         for nn in range(n):
             # Random initialization (get the chain going)
-            u = stats.uniform.rvs(0, 1)
+            u = stats.uniform.rvs(0, 1, random_state=rng)
             for tt in range(t):
                 # Do not provide w to get a random sample
-                v = self.variable(u=u, w=None)
+                v = self.variable(u=u, w=None, rng=rng)
                 uniform_samples[nn, tt] = v
 
                 if self.markovian:
@@ -593,7 +598,7 @@ class ClaytonCopula(Copula):
         # Bivariate density
         assert self.alpha is not None
         p = (1 + self.alpha) * (u * v) ** (-self.alpha - 1)
-        p *= (u ** -self.alpha + v ** -self.alpha - 1) ** (-1/self.alpha - 2)
+        p *= (u ** -self.alpha + v ** -self.alpha - 1) ** (-1 / self.alpha - 2)
 
         return p
 
@@ -760,7 +765,7 @@ class NormalCopula(Copula):
         assert self.alpha is not None
         term1 = 1 / np.sqrt(1 - self.alpha**2)
 
-        # Note, in the following term, the book has a sign wrong, this has
+        # NOTE: in the following term, the book has a sign wrong, this has
         # been corrected here:
         exp_num = - self.alpha**2 * \
             (psi_i_u**2 + psi_i_v**2) + 2 * self.alpha * psi_i_u * psi_i_v

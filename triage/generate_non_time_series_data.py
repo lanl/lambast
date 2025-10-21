@@ -6,7 +6,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 
-class BaseDataClass:
+class BaseDataClass(object):
 
     def __init__(self) -> None:
         """

@@ -24,7 +24,7 @@ def run_example():
     nr = int(np.ceil(n / nc))
     plt.figure(figsize=(3 * nc, 2 * nr))
     for nn in range(n):
-        plt.subplot(nr, nc, nn+1)
+        plt.subplot(nr, nc, nn + 1)
         plt.plot(samples[nn], c="black")
         plt.title("Sample " + str(nn))
         plt.xlabel("Time (samples)")
@@ -60,7 +60,7 @@ def run_example():
 
     ax.clabel(CS, CS.levels, inline=True, fmt=fmt, fontsize=10)
 
-    # Plot some random realizations of the copula given given u = 0.7
+    # Plot some random realizations of the copula given u = 0.7
     n_draws = 100  # number draws to make
     given_u = np.repeat(0.7, n_draws)  # specify which u in [0,1]
 
@@ -102,11 +102,12 @@ def run_example():
 
     # Pull the samples before they are passed to the marginal distribution
     uniform_samples = cop.uniform_samples
-    u_t = uniform_samples[nn][0:t-1]  # the first variable from the copula u(t)
+    # the first variable from the copula u(t)
+    u_t = uniform_samples[nn][0:t - 1]
     u_tp1 = uniform_samples[nn][1:]  # the second variable u(t+1)
 
     # x(t) has the marginal distribution applied to it:
-    x_t = samples[nn][0:t-1]  # considered the "time-series" x(t)
+    x_t = samples[nn][0:t - 1]  # considered the "time-series" x(t)
     x_tp1 = samples[nn][1:]  # x(t+1)
 
     nr = 2
