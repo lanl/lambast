@@ -2,7 +2,7 @@
 
 # Create virtual environment for the test
 testing_env_dir=${HOME}/.local/python_envs
-testing_env=${testing_env_dir}/triage_testing_venv
+testing_env=${testing_env_dir}/lambast_testing_venv
 
 # Check if venv already exists
 mkdir -p ${testing_env_dir}
@@ -21,7 +21,7 @@ fi
 if [[ ${1} ]]; then
     case ${1} in
     -c)
-        # Clean every package but triage
+        # Clean every package but lambast
         clean=true
         ;;
     -i)
@@ -31,13 +31,13 @@ if [[ ${1} ]]; then
 fi
 
 if [[ $clean ]]; then
-    python3 -m pip uninstall -yr <(python3 -m pip freeze | sed -nr '/triage/!p')
+    python3 -m pip uninstall -yr <(python3 -m pip freeze | sed -nr '/lambast/!p')
 fi
 
-# Install triage
+# Install lambast
 if [[ $install ]]; then
     python3 -m pip install mypy
     python3 -m pip install flake8
     python3 -m pip install autopep8
-    python3 -m pip install -e $triage_parent_dir
+    python3 -m pip install -e $lambast_parent_dir
 fi

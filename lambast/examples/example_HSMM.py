@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from triage import HSMM
+from lambast import HSMM
 
 
 def run_example():

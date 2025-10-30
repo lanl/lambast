@@ -12,11 +12,11 @@ The possible flags are
 -c, --clean
     Cleans the python virtual environment by uninstalling all packages
 -i, --install
-    Installs triage and other packages needed for testing
+    Installs lambast and other packages needed for testing
 -t, --test
     Runs the tests
 -f, --format
     Runs an auto-formatter, format checker and static typing checker
 ```
 
-When the `-i` flag is passed, the script creates its own python environment in `~/.local/python_envs/triage_testing_venv`, installs mypy, flake8, autopep8 and triage in editable mode.
+When the `-i` flag is passed, the script creates its own python environment in `~/.local/python_envs/lambast_testing_venv`, installs mypy, flake8, autopep8 and triage in editable mode.

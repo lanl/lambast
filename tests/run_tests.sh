@@ -4,7 +4,7 @@
 usage="Usage: ${0} [-h | --help] [-c | --clean] [-i | --install] [-t | --test] \
                    [-f | --format]"
 
-triage_parent_dir=$(dirname $(dirname $(realpath ${0})))
+lambast_parent_dir=$(dirname $(dirname $(realpath ${0})))
 
 # Check if at least one character was passed
 if [[ ${1} ]]; then
@@ -65,7 +65,7 @@ done
 
 # Create and activate the venv for the tests
 # Pass option if given to the first script
-source $triage_parent_dir/tests/create_activate_venv.sh ${pass_args}
+source $lambast_parent_dir/tests/create_activate_venv.sh ${pass_args}
 
 # Make sure previous script was successful
 if [[ ${?} -ne 0 ]]; then
@@ -75,17 +75,17 @@ fi
 
 if [[ $format ]]; then
     # Apply autopep8
-    autopep8 -iaar $triage_parent_dir/triage
+    autopep8 -iaar $lambast_parent_dir/triage
 
     # Run the format checker
-    flake8 --ignore=F401,E226,W503,W504 $triage_parent_dir/triage
+    flake8 --ignore=F401,E226,W503,W504 $lambast_parent_dir/triage
 
     # Run the type checker
-    mypy $triage_parent_dir/triage
+    mypy $lambast_parent_dir/triage
 fi
 
 # Run the tests
 if [[ $do_test ]]; then
-    python3 $triage_parent_dir/tests/unit_tests.py
-    python3 $triage_parent_dir/tests/integrated_tests.py
+    python3 $lambast_parent_dir/tests/unit_tests.py
+    python3 $lambast_parent_dir/tests/integrated_tests.py
 fi

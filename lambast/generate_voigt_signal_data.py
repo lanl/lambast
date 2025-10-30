@@ -9,9 +9,10 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import triage.util as util
 from numpy.typing import NDArray
 from scipy.special import wofz
+
+import lambast.util as util
 
 
 @dataclass

@@ -1,6 +1,6 @@
 import unittest
 
-import triage
+import lambast
 
 
 class UnitTests(unittest.TestCase):

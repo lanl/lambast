@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 
-from triage import ClaytonCopula
+from lambast import ClaytonCopula
 
 
 def run_example():

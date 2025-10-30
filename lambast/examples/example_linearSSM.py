@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import statsmodels.api as sm
 
-from triage import LinearSSM
+from lambast import LinearSSM
 
 
 def avg_acf(ts):

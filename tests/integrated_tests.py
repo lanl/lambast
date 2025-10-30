@@ -5,8 +5,8 @@ import numpy as np
 import ruptures as rpt
 from numpy.typing import NDArray
 
-from triage import (HSMM, ChangePoint, ClaytonCopula, FrankCopula, JoeCopula,
-                    LinearSSM, NormalCopula, Voigt)
+from lambast import (HSMM, ChangePoint, ClaytonCopula, FrankCopula, JoeCopula,
+                     LinearSSM, NormalCopula, Voigt)
 
 
 class IntegratedTests(unittest.TestCase):
