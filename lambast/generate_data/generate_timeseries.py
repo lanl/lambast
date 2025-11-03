@@ -14,7 +14,7 @@ from scipy import stats
 from scipy.optimize import fsolve
 from scipy.stats import truncnorm
 
-from .util import assert_valid_covariance
+from lambast.utils import assert_valid_covariance
 
 
 class TimeSeries(object):

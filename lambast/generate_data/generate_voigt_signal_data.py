@@ -12,7 +12,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from scipy.special import wofz
 
-import lambast.util as util
+from lambast.utils import util
 
 
 @dataclass

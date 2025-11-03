@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from lambast import HSMM
+from lambast.generate_data import HSMM
 
 
 def run_example():

@@ -5,8 +5,9 @@ import numpy as np
 import ruptures as rpt
 from numpy.typing import NDArray
 
-from lambast import (HSMM, ChangePoint, ClaytonCopula, FrankCopula, JoeCopula,
-                     LinearSSM, NormalCopula, Voigt)
+from lambast.detection_methods import ChangePoint
+from lambast.generate_data import (HSMM, ClaytonCopula, FrankCopula, JoeCopula,
+                                   LinearSSM, NormalCopula, Voigt)
 
 
 class IntegratedTests(unittest.TestCase):

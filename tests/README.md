@@ -19,4 +19,4 @@ The possible flags are
     Runs an auto-formatter, format checker and static typing checker
 ```
 
-When the `-i` flag is passed, the script creates its own python environment in `~/.local/python_envs/lambast_testing_venv`, installs mypy, flake8, autopep8 and triage in editable mode.
+When the `-i` flag is passed, the script creates its own python environment in `~/.local/python_envs/lambast_testing_venv`, installs mypy, flake8, autopep8 and lambast in editable mode.

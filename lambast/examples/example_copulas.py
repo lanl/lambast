@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 
-from lambast import ClaytonCopula
+from lambast.generate_data import ClaytonCopula
 
 
 def run_example():

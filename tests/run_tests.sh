@@ -75,13 +75,13 @@ fi
 
 if [[ $format ]]; then
     # Apply autopep8
-    autopep8 -iaar $lambast_parent_dir/triage
+    autopep8 -iaar $lambast_parent_dir/lambast
 
     # Run the format checker
-    flake8 --ignore=F401,E226,W503,W504 $lambast_parent_dir/triage
+    flake8 --ignore=F401,E226,W503,W504 $lambast_parent_dir/lambast
 
     # Run the type checker
-    mypy $lambast_parent_dir/triage
+    mypy $lambast_parent_dir/lambast
 fi
 
 # Run the tests
