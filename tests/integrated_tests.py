@@ -1,13 +1,12 @@
-import os
+import pathlib
 import unittest
 
 import numpy as np
 import ruptures as rpt
-from numpy.typing import NDArray
-
 from lambast.detection_methods import ChangePoint
 from lambast.generate_data import (HSMM, ClaytonCopula, FrankCopula, JoeCopula,
                                    LinearSSM, NormalCopula, Voigt)
+from numpy.typing import NDArray
 
 
 class IntegratedTests(unittest.TestCase):
@@ -25,12 +24,12 @@ class IntegratedTests(unittest.TestCase):
         Generic function to test array against blessed file
         '''
 
-        file = os.path.join(directory, file)
+        pathFile = pathlib.Path(directory) / file
 
         if save:
-            np.save(file, array)
+            np.save(pathFile, array)
 
-        blessed = np.load(f"{file}.npy")
+        blessed = np.load(f"{pathFile}.npy")
         diff = np.mean(np.abs(blessed - array))
         self.assertAlmostEqual(diff, 0, n_digits)
 

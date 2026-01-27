@@ -167,46 +167,42 @@ class Copula(TimeSeries):
             uniform_samples: array of samples between (0,1)
         Returns samples after being passed through the marginal distribution.
         """
-        if self.marginal_family == "uniform":
-            x = uniform_samples  # do nothing, keep marginal uniform
 
-        elif self.marginal_family == "normal":
-            if self.loc is None:
-                self.loc = 0
-            if self.scale is None:
-                self.scale = 1
-            x = stats.norm.ppf(uniform_samples, self.loc, self.scale)
+        match self.marginal_family:
+            case "uniform":
+                return uniform_samples  # do nothing, keep marginal uniform
+            case "normal":
+                if self.loc is None:
+                    self.loc = 0
+                if self.scale is None:
+                    self.scale = 1
+                return stats.norm.ppf(uniform_samples, self.loc, self.scale)
+            case "gamma":
+                if self.loc is None:
+                    self.loc = 1
+                if self.scale is None:
+                    self.scale = 2
+                return stats.gamma.ppf(uniform_samples, self.loc, self.scale)
+            case "t":
+                if self.loc is None:
+                    self.loc = 3  # really degrees of freedom
+                return stats.t.ppf(uniform_samples, self.loc)
+            case "gumbel":
+                if self.loc is None:
+                    self.loc = 3
+                if self.scale is None:
+                    self.scale = 4
+                return stats.gumbel_r.ppf(uniform_samples, self.loc,
+                                          self.scale)
+            case "exponential":
+                if self.loc is None:
+                    self.loc = 1  # rate
+                return stats.expon.ppf(uniform_samples, self.loc)
 
-        elif self.marginal_family == "gamma":
-            if self.loc is None:
-                self.loc = 1
-            if self.scale is None:
-                self.scale = 2
-            x = stats.gamma.ppf(uniform_samples, self.loc, self.scale)
-
-        elif self.marginal_family == "t":
-            if self.loc is None:
-                self.loc = 3  # really degrees of freedom
-            x = stats.t.ppf(uniform_samples, self.loc)
-
-        elif self.marginal_family == "gumbel":
-            if self.loc is None:
-                self.loc = 3
-            if self.scale is None:
-                self.scale = 4
-            x = stats.gumbel_r.ppf(uniform_samples, self.loc, self.scale)
-
-        elif self.marginal_family == "exponential":
-            if self.loc is None:
-                self.loc = 1  # rate
-            x = stats.expon.ppf(uniform_samples, self.loc)
-
-        else:
-            e = "Marginal family chosen is not supported. "
-            e += "Please see possible options."
-            raise ValueError(e)
-
-        return x
+        raise ValueError(
+            "Marginal family chosen is not supported." +
+            " Please see possible options."
+        )
 
 
 class ClaytonCopula(Copula):

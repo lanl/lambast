@@ -95,3 +95,7 @@ def run_example():
 
     # TODO
     # Case D: change point (sort of)
+
+
+if __name__ == "__main__":
+    run_example()

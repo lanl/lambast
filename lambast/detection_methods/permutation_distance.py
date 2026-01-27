@@ -241,29 +241,28 @@ class PermutationDistance(object):
 
         assert self.train_d is not None and self.target_d is not None
 
-        if type_ == "PSI":
-            value = np.sum((self.train_d - self.target_d) *
-                           np.log(self.train_d / self.target_d))
-        elif type_ == "JS":
-            value = sp.spatial.distance.jensenshannon(self.train_d,
-                                                      self.target_d, base=np.e)
-        elif type_ == "WD":
-            if wass_p is None:
-                wass_p = self.wass_p
-            d1sort = np.sort(train_data)
-            d2sort = np.sort(target_data)
-            value = np.mean(np.abs(d1sort - d2sort) ** wass_p)
-            value **= 1 / wass_p
-
-        elif type_ == "KS":
-            ks_test_result = sp.stats.kstest(train_data, target_data,
-                                             alternative='two-sided')
-            value = ks_test_result.statistic
-        else:
-            e = "Provide a type_ parameter: 'PSI', 'JS', 'WD', or 'KS'"
-            raise Exception(e)
-
-        return value
+        match type_:
+            case "PSI":
+                return np.sum((self.train_d - self.target_d) *
+                              np.log(self.train_d / self.target_d))
+            case "JS":
+                return sp.spatial.distance.jensenshannon(self.train_d,
+                                                         self.target_d,
+                                                         base=np.e)
+            case "WD":
+                if wass_p is None:
+                    wass_p = self.wass_p
+                return np.mean(
+                    np.abs(
+                        np.sort(train_data) - np.sort(target_data)
+                    ) ** wass_p) ** (-wass_p)
+            case "KS":
+                return sp.stats.kstest(train_data,  # type: ignore[arg-type]
+                                       target_data,  # type: ignore[arg-type]
+                                       alternative='two-sided').statistic
+            case _:
+                e = "Provide a type_ parameter: 'PSI', 'JS', 'WD', or 'KS'"
+                raise Exception(e)
 
     def data_shift_test(self, use: str, metrics: list[str] | str,
                         wass_p: float | None = None,
@@ -333,9 +332,8 @@ class PermutationDistance(object):
                                                  alternative='two-sided')
 
                 # Give the results already
-                result = (ks_test_result.pvalue,
-                          ks_test_result.pvalue < p_value)
-                results[-1] = result
+                results[-1] = (ks_test_result.pvalue,
+                               ks_test_result.pvalue < p_value)
                 continue
 
             observed_stat[-1] = self.metric(type_, use, wass_p=wass_p,
