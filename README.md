@@ -4,7 +4,7 @@
 
 You can install LAMBAST with
 
-    pip install .
+    pip install lambast
 
 ## Use
 
