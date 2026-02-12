@@ -10,10 +10,6 @@ You can install LAMBAST with
 
 Simply `import lambast.<module>` in your python script.
 
-## Docs
-
-TODO
-
 ### Overview
 
 LAMBAST consists currently of 3 modules:
@@ -22,8 +18,8 @@ LAMBAST consists currently of 3 modules:
 - generate_data
 - utils
 
-Each of these modules can be explored through the `html` files in the `docs`
-directory or using `help` from the python REPL, for example:
+Each of these modules can be explored using `help` from the python REPL, for
+example:
 
 ```python-repl
 >>> from lambast import generate_data
