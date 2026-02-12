@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools >= 61.0"]
+requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 requires-python = ">= 3.10"
-dynamic = ["version"]
+version = "0.1.0"
 name = "lambast"
-description = ""
+description = "Los Alamos Model Bias Assessment and Statistical Toolkit"
 dependencies = [
     "numpy",
     "scipy",
@@ -25,3 +25,8 @@ authors = [
 maintainers = [
     {name = "Andrés Yagüe López", email = "ayaguelopez@lanl.gov"},
 ]
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+
+[project.urls]
+Homepage = "https://github.com/lanl/lambast"
