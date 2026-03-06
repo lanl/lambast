@@ -9,28 +9,15 @@ with weights from density ratio estimation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from .util import _to_float_tensor
 
 TensorLike = Union[np.ndarray, torch.Tensor]
-FeatureFn = Optional[Callable[[torch.Tensor], torch.Tensor]]
-
-
-def _to_float_tensor(x: TensorLike) -> torch.Tensor:
-    """Convert numpy/torch input to float32 torch.Tensor on CPU."""
-    if isinstance(x, torch.Tensor):
-        t = x
-    else:
-        # safe for numpy arrays and array-likes
-        t = torch.from_numpy(np.asarray(x))
-    if not torch.is_floating_point(t):
-        t = t.float()
-    return t.contiguous()
-
 
 class DomainDataset(Dataset):
     """
