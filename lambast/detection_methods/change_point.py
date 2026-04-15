@@ -18,9 +18,19 @@ class ChangePoint(object):
     samples: ArrayLike | None = None
     detected: bool = False
     optimal_breakpoints: dict | None = None
-    models: ClassVar[list[str]] = ["l1", "l2", "ar", "clinear", "cosine",
-                                   "cosine", "linear", "mahalanobis", "normal",
-                                   "rank", "rbf"]
+    models: ClassVar[list[str]] = [
+        "l1",
+        "l2",
+        "ar",
+        "clinear",
+        "cosine",
+        "cosine",
+        "linear",
+        "mahalanobis",
+        "normal",
+        "rank",
+        "rbf",
+    ]
     kernels: ClassVar[list[str]] = ["linear", "rbf", "cosine"]
 
     estimators: ClassVar[dict[str, Callable]] = {
@@ -29,7 +39,7 @@ class ChangePoint(object):
         "Dynp": ruptures.Dynp,
         "KernelCPD": ruptures.KernelCPD,
         "Pelt": ruptures.Pelt,
-        "Window": ruptures.Window
+        "Window": ruptures.Window,
     }
 
     optional_args: ClassVar[list[str]] = [
@@ -91,14 +101,17 @@ class ChangePoint(object):
         s = f"Kernels: {ChangePoint.kernels}"
         return s
 
-    def detect_change_point(self, samples: ArrayLike | None = None,
-                            estimator: str = "Pelt",
-                            model: str = "rbf",
-                            kernel: str = "rbf",
-                            custom_cost: ruptures.base.BaseCost | None = None,
-                            min_size: int = 2,
-                            jump: int = 5,
-                            **fit_args: dict[str, Any]) -> None:
+    def detect_change_point(
+        self,
+        samples: ArrayLike | None = None,
+        estimator: str = "Pelt",
+        model: str = "rbf",
+        kernel: str = "rbf",
+        custom_cost: ruptures.base.BaseCost | None = None,
+        min_size: int = 2,
+        jump: int = 5,
+        **fit_args: dict[str, Any],
+    ) -> None:
         """
         Detect the change points
 
@@ -131,17 +144,24 @@ class ChangePoint(object):
             est_args["model"] = model
             est_args["custom_cost"] = custom_cost
 
-        self.optimal_breakpoints = ChangePoint.estimators[estimator](
-            **est_args).fit(self.samples).predict(**fit_args)
+        self.optimal_breakpoints = (
+            ChangePoint.estimators[estimator](**est_args)
+            .fit(self.samples)
+            .predict(**fit_args)
+        )
 
         if len(self.optimal_breakpoints) > 1:
             self.detected = True
 
-    def display(self, x_values: list[float] | None = None,
-                save_fig: bool = True,
-                figname: str = "test", filetype: str = "pdf",
-                use_ax: plt.Axes | None = None,
-                **plot_args) -> None:
+    def display(
+        self,
+        x_values: list[float] | None = None,
+        save_fig: bool = True,
+        figname: str = "test",
+        filetype: str = "pdf",
+        use_ax: plt.Axes | None = None,
+        **plot_args,
+    ) -> None:
         """
         Display the change points
 
@@ -175,14 +195,17 @@ class ChangePoint(object):
 
             # Plot the breakpoints
             if self.optimal_breakpoints is not None:
-
                 # NOTE:
                 # This replicates the ruptures plotting of breakpoints
                 # but allows us to use it in a multi-panel figure.
                 bkps = [0] + list(self.optimal_breakpoints)
                 for (start, end), col in zip(pairwise(bkps), color_cycle):
-                    use_ax.axvspan(max(0, start - 0.5), end -
-                                   0.5, facecolor=col, alpha=0.2)
+                    use_ax.axvspan(
+                        max(0, start - 0.5),
+                        end - 0.5,
+                        facecolor=col,
+                        alpha=0.2,
+                    )
 
         if use_ax is None and save_fig:
-            plt.savefig(figname + '.' + filetype)
+            plt.savefig(figname + "." + filetype)

@@ -9,9 +9,9 @@ from .timeseries_class import TimeSeries
 
 
 class Copula(TimeSeries):
-
-    def __init__(self, alpha: float | None = None,
-                 markovian: bool = True) -> None:
+    def __init__(
+        self, alpha: float | None = None, markovian: bool = True
+    ) -> None:
         """
         Initializes a new instance of a Copula.
 
@@ -32,9 +32,12 @@ class Copula(TimeSeries):
         # Family that will be defined by instance of subclass
         self.copula_family: str | None = None
 
-    def define_marginal(self, marginal_family: str = "uniform",
-                        loc: float | None = None,
-                        scale: float | None = None) -> None:
+    def define_marginal(
+        self,
+        marginal_family: str = "uniform",
+        loc: float | None = None,
+        scale: float | None = None,
+    ) -> None:
         """
         Method to instantiate the desired marginal distribution qualities.
 
@@ -62,9 +65,13 @@ class Copula(TimeSeries):
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def variable(self, u: NDArray | None = None, w: NDArray | None = None,
-                 rng: np.random.Generator | None = None,
-                 *args) -> float | NDArray:
+    def variable(
+        self,
+        u: NDArray | None = None,
+        w: NDArray | None = None,
+        rng: np.random.Generator | None = None,
+        *args,
+    ) -> float | NDArray:
         """
         Provides variables u and w to the copula variable_generator and returns
         the variable v such that (U,V) is a realization of the copula model.
@@ -82,8 +89,9 @@ class Copula(TimeSeries):
 
         return self.variable_generator(u, w)
 
-    def sample(self, n: int = 1, t: int = 1000,
-               rng: np.random.Generator | None = None) -> NDArray:
+    def sample(
+        self, n: int = 1, t: int = 1000, rng: np.random.Generator | None = None
+    ) -> NDArray:
         """
         Generate n samples from a bivariate copula distribution with marginal
         family specified.
@@ -126,8 +134,12 @@ class Copula(TimeSeries):
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def density(self, u: NDArray | None = None, v: NDArray | None = None,
-                n_samples: int = 2000) -> tuple[NDArray, NDArray, NDArray]:
+    def density(
+        self,
+        u: NDArray | None = None,
+        v: NDArray | None = None,
+        n_samples: int = 2000,
+    ) -> tuple[NDArray, NDArray, NDArray]:
         """
         Function to call the density_generator function specific to each
         copula. If no arguments are given, then provides a meshgrid that can
@@ -192,16 +204,17 @@ class Copula(TimeSeries):
                     self.loc = 3
                 if self.scale is None:
                     self.scale = 4
-                return stats.gumbel_r.ppf(uniform_samples, self.loc,
-                                          self.scale)
+                return stats.gumbel_r.ppf(
+                    uniform_samples, self.loc, self.scale
+                )
             case "exponential":
                 if self.loc is None:
                     self.loc = 1  # rate
                 return stats.expon.ppf(uniform_samples, self.loc)
 
         raise ValueError(
-            "Marginal family chosen is not supported." +
-            " Please see possible options."
+            "Marginal family chosen is not supported."
+            + " Please see possible options."
         )
 
 
@@ -237,8 +250,10 @@ class ClaytonCopula(Copula):
     def variable_generator(self, u: NDArray, w: NDArray) -> NDArray:
 
         assert self.alpha is not None
-        v = ((w ** (-self.alpha / (self.alpha + 1)) - 1)
-             * u ** (-self.alpha) + 1) ** (-1 / self.alpha)
+        v = (
+            (w ** (-self.alpha / (self.alpha + 1)) - 1) * u ** (-self.alpha)
+            + 1
+        ) ** (-1 / self.alpha)
 
         return v
 
@@ -246,7 +261,7 @@ class ClaytonCopula(Copula):
         # Bivariate density
         assert self.alpha is not None
         p = (1 + self.alpha) * (u * v) ** (-self.alpha - 1)
-        p *= (u ** -self.alpha + v ** -self.alpha - 1) ** (-1 / self.alpha - 2)
+        p *= (u**-self.alpha + v**-self.alpha - 1) ** (-1 / self.alpha - 2)
 
         return p
 
@@ -315,7 +330,7 @@ class JoeCopula(Copula):
         assert self.alpha is not None
         product = (1 - u) * (1 - v)
         common = (1 - u) ** self.alpha + (1 - v) ** self.alpha
-        common -= product ** self.alpha
+        common -= product**self.alpha
 
         term1 = self.alpha * common ** (1 / self.alpha - 1)
         term1 *= product ** (self.alpha - 1)
@@ -360,8 +375,11 @@ class FrankCopula(Copula):
 
         assert self.alpha is not None
         term1 = -1 / self.alpha
-        lognum = np.exp(-self.alpha * u) - w * \
-            np.exp(-self.alpha * u) + w * np.exp(-self.alpha)
+        lognum = (
+            np.exp(-self.alpha * u)
+            - w * np.exp(-self.alpha * u)
+            + w * np.exp(-self.alpha)
+        )
 
         if lognum == 0:
             print(u, w, self.alpha)
@@ -373,10 +391,16 @@ class FrankCopula(Copula):
     def density_generator(self, u: NDArray, v: NDArray) -> NDArray:
 
         assert self.alpha is not None
-        num = self.alpha * (1 - np.exp(-self.alpha)) * \
-            np.exp(-self.alpha * (u + v))
-        den = (np.exp(-self.alpha) - 1 + (np.exp(-self.alpha * u) - 1)
-               * (np.exp(-self.alpha * v) - 1))**2
+        num = (
+            self.alpha
+            * (1 - np.exp(-self.alpha))
+            * np.exp(-self.alpha * (u + v))
+        )
+        den = (
+            np.exp(-self.alpha)
+            - 1
+            + (np.exp(-self.alpha * u) - 1) * (np.exp(-self.alpha * v) - 1)
+        ) ** 2
 
         # Bivariate density
         return num / den
@@ -401,8 +425,9 @@ class NormalCopula(Copula):
         psi_i_u = stats.norm.ppf(u)
 
         assert self.alpha is not None
-        inner_term = psi_i_k * \
-            np.sqrt(1 - self.alpha ** 2) + self.alpha * psi_i_u
+        inner_term = (
+            psi_i_k * np.sqrt(1 - self.alpha**2) + self.alpha * psi_i_u
+        )
         v = stats.norm.cdf(inner_term)
         return v
 
@@ -415,8 +440,10 @@ class NormalCopula(Copula):
 
         # NOTE: in the following term, the book has a sign wrong, this has
         # been corrected here:
-        exp_num = - self.alpha**2 * \
-            (psi_i_u**2 + psi_i_v**2) + 2 * self.alpha * psi_i_u * psi_i_v
+        exp_num = (
+            -(self.alpha**2) * (psi_i_u**2 + psi_i_v**2)
+            + 2 * self.alpha * psi_i_u * psi_i_v
+        )
         exp_den = 2 * (1 - self.alpha**2)
 
         # Bivariate density

@@ -7,7 +7,6 @@ from numpy.typing import ArrayLike
 
 
 class BaseDataClass(object):
-
     def __init__(self) -> None:
         """
         Base class for non-timeseries data.
@@ -15,8 +14,9 @@ class BaseDataClass(object):
 
         return None
 
-    def sample(self, num_samples: int, *args,
-               **kwargs) -> ArrayLike | tuple[ArrayLike, ArrayLike]:
+    def sample(
+        self, num_samples: int, *args, **kwargs
+    ) -> ArrayLike | tuple[ArrayLike, ArrayLike]:
         """
         Sample `n` points from the BaseDataClass model.
 
@@ -62,14 +62,19 @@ class MultivariateGaussian(BaseDataClass):
         Returns:
         - samples: A 2D numpy array where each row is a sample.
         """
-        samples = np.random.multivariate_normal(self.mean, self.covariance,
-                                                num_samples)
+        samples = np.random.multivariate_normal(
+            self.mean, self.covariance, num_samples
+        )
         return samples
 
 
 class GaussianMixtureModel(BaseDataClass):
-    def __init__(self, weights: ArrayLike, means: list[ArrayLike],
-                 covariances: list[ArrayLike]) -> None:
+    def __init__(
+        self,
+        weights: ArrayLike,
+        means: list[ArrayLike],
+        covariances: list[ArrayLike],
+    ) -> None:
         """
         Initialize the Gaussian Mixture Model.
 
@@ -90,9 +95,9 @@ class GaussianMixtureModel(BaseDataClass):
         # Validate inputs
         if not np.isclose(np.sum(self.weights), 1):
             raise ValueError("Weights must sum to 1.")
-        if len(self.weights) != len(self.means) or \
-                len(self.means) != len(self.covariances):
-
+        if len(self.weights) != len(self.means) or len(self.means) != len(
+            self.covariances
+        ):
             e = "Number of weights, means, and covariances must be the same."
             raise ValueError(e)
 
@@ -134,8 +139,9 @@ class GaussianMixtureModel(BaseDataClass):
             # Select a component based on the weights
             component = np.random.choice(n_components, p=self.weights)
             # Sample from the selected Gaussian component
-            sample = np.random.multivariate_normal(self.means[component],
-                                                   self.covariances[component])
+            sample = np.random.multivariate_normal(
+                self.means[component], self.covariances[component]
+            )
             samples.append(sample)
             labels.append(component)
 

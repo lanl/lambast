@@ -32,8 +32,9 @@ def assert_valid_covariance(matrix: NDArray, tol: float = 1e-8) -> None:
         raise ValueError("Covariance matrix is not positive semi-definite.")
 
 
-def compute_snr(sig: NDArray[np.complex64],
-                noise: NDArray[np.complex64]) -> NDArray[np.complex64]:
+def compute_snr(
+    sig: NDArray[np.complex64], noise: NDArray[np.complex64]
+) -> NDArray[np.complex64]:
     """
     Compute SNR empirically given signal and noise data.
     """
@@ -44,9 +45,12 @@ def compute_snr(sig: NDArray[np.complex64],
     return 10.0 * np.log10(sig_var / noise_var)
 
 
-def white_noise_gen(t: NDArray, N: int, sigma: float = 1.0,
-                    rng: np.random.Generator = np.random.default_rng()
-                    ) -> NDArray:
+def white_noise_gen(
+    t: NDArray,
+    N: int,
+    sigma: float = 1.0,
+    rng: np.random.Generator = np.random.default_rng(),
+) -> NDArray:
     """
     Generate complex Gaussian white noise time series of shape (N, t) with
     total variance sigma.

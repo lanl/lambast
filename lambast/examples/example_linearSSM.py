@@ -2,6 +2,7 @@
 Initial shift examples.
 
 """
+
 import matplotlib.pyplot as plt
 import numpy as np
 import statsmodels.api as sm
@@ -25,21 +26,21 @@ def plot_ts_and_new_ts(ts, new_ts):
 
     # Create the subplots
     ax1 = fig.add_subplot(grid[0, 0])  # Top left (spans 2 columns)
-    ax2 = fig.add_subplot(grid[0, 1])   # Top right
+    ax2 = fig.add_subplot(grid[0, 1])  # Top right
     ax3 = fig.add_subplot(grid[1, 0])  # Bottom left (spans 2 columns)
-    ax4 = fig.add_subplot(grid[1, 1])   # Bottom right
+    ax4 = fig.add_subplot(grid[1, 1])  # Bottom right
 
     ax1.plot(ts[:, 1, :].T)
-    ax1.set_title('Training data')
+    ax1.set_title("Training data")
 
     ax2.plot(avg_acf(ts[:, 1, :]))
-    ax2.set_title('Training autocorr.')
+    ax2.set_title("Training autocorr.")
 
     ax3.plot(new_ts[:, 1, :].T)
-    ax3.set_title('Shifted data')
+    ax3.set_title("Shifted data")
 
     ax4.plot(avg_acf(new_ts[:, 1, :]))
-    ax4.set_title('Shifted autocorr.')
+    ax4.set_title("Shifted autocorr.")
 
     plt.tight_layout()
     plt.show()
@@ -64,8 +65,14 @@ def run_example():
     obs_noise_cov = 0.01 * np.eye(p)
 
     # Instantiate the SSM object
-    ssm = LinearSSM(state_matrix, state_noise_cov, obs_matrix, obs_noise_cov,
-                    rng=rng, scale_matrix=True)
+    ssm = LinearSSM(
+        state_matrix,
+        state_noise_cov,
+        obs_matrix,
+        obs_noise_cov,
+        rng=rng,
+        scale_matrix=True,
+    )
 
     # Sample the time series
     ssm.sample(n, t)
@@ -73,8 +80,9 @@ def run_example():
 
     # Case A: Generate with changed state matrix
     state_matrix_A = ssm.state_matrix + 0.1 * rng.normal(size=(d, d))
-    ssm_A = ssm.copy_with_changes(state_matrix=state_matrix_A,
-                                  scale_matrix=True)
+    ssm_A = ssm.copy_with_changes(
+        state_matrix=state_matrix_A, scale_matrix=True
+    )
 
     ssm_A.sample(n, t)
     plot_ts_and_new_ts(ssm.ts_samples, new_ts=ssm_A.ts_samples)

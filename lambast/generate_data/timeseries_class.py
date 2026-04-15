@@ -2,7 +2,6 @@ from numpy.typing import NDArray
 
 
 class TimeSeries(object):
-
     def __init__(self) -> None:
         """
         TimeSeries base class.
@@ -11,8 +10,9 @@ class TimeSeries(object):
 
         return None
 
-    def sample(self, n: int, t: int, *args, **kwargs
-               ) -> NDArray | tuple[list[NDArray], list[NDArray]]:
+    def sample(
+        self, n: int, t: int, *args, **kwargs
+    ) -> NDArray | tuple[list[NDArray], list[NDArray]]:
         """
         Sample `n` time series with `t` time points from the TimeSeries model.
 

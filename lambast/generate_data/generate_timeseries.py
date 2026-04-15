@@ -18,11 +18,15 @@ from .timeseries_class import TimeSeries
 
 
 class LinearSSM(TimeSeries):
-
-    def __init__(self, state_matrix: NDArray, state_noise_cov: NDArray,
-                 obs_matrix: NDArray, obs_noise_cov: NDArray,
-                 rng: np.random.Generator | None = None,
-                 scale_matrix: bool = False) -> None:
+    def __init__(
+        self,
+        state_matrix: NDArray,
+        state_noise_cov: NDArray,
+        obs_matrix: NDArray,
+        obs_noise_cov: NDArray,
+        rng: np.random.Generator | None = None,
+        scale_matrix: bool = False,
+    ) -> None:
         """
         Initializes a new instance of a Linear State Space Model.
         State dimension is d, observation dimension is p.
@@ -86,9 +90,9 @@ class LinearSSM(TimeSeries):
         spectral_radius = np.max(np.abs(eigenvalues))
         if spectral_radius >= 1:
             if scale_matrix:
-                self.state_matrix /= (spectral_radius + 0.1)
+                self.state_matrix /= spectral_radius + 0.1
             else:
-                warnings.warn('Warning: state_matrix is not stable.')
+                warnings.warn("Warning: state_matrix is not stable.")
 
     def copy_with_changes(self, **kwargs) -> Self:
         """
@@ -114,8 +118,9 @@ class LinearSSM(TimeSeries):
         Docstring TODO
         """
         mv_n = self.rng.multivariate_normal
-        draws = mv_n(np.zeros((self.d)), self.state_noise_cov,
-                     size=(state.shape[0]))[:, :, np.newaxis]
+        draws = mv_n(
+            np.zeros((self.d)), self.state_noise_cov, size=(state.shape[0])
+        )[:, :, np.newaxis]
 
         return self.state_matrix @ state + draws
 
@@ -124,13 +129,19 @@ class LinearSSM(TimeSeries):
         Docstring TODO
         """
         mv_n = self.rng.multivariate_normal
-        draws = mv_n(np.zeros((self.p)), self.obs_noise_cov,
-                     size=(state.shape[0]))[:, :, np.newaxis]
+        draws = mv_n(
+            np.zeros((self.p)), self.obs_noise_cov, size=(state.shape[0])
+        )[:, :, np.newaxis]
 
         return self.obs_matrix @ state + draws
 
-    def sample(self, n: int, t: int, init_mean: NDArray | None = None,
-               init_cov: NDArray | None = None) -> NDArray:
+    def sample(
+        self,
+        n: int,
+        t: int,
+        init_mean: NDArray | None = None,
+        init_cov: NDArray | None = None,
+    ) -> NDArray:
         """
         Samples from LinearSSM with initial state sampled from Gaussian with
         init_mean and init_cov.
@@ -152,8 +163,9 @@ class LinearSSM(TimeSeries):
             init_cov = np.eye(self.d)
 
         # Sample initial state
-        state = self.rng.multivariate_normal(init_mean, init_cov,
-                                             size=n)[:, :, np.newaxis]
+        state = self.rng.multivariate_normal(init_mean, init_cov, size=n)[
+            :, :, np.newaxis
+        ]
 
         # Recursively sample observations
         for t_index in range(t):
@@ -175,17 +187,20 @@ class LinearSSM(TimeSeries):
             plt.plot(self.ts_samples[:, i, :].T)
             plt.title(f"Dim. {i}")
 
-        plt.xlabel('Time')
+        plt.xlabel("Time")
         plt.show()
 
 
 class HSMM(TimeSeries):
-
-    def __init__(self, init_probs: NDArray, transition_probs: NDArray,
-                 emission_means: list[NDArray],
-                 emission_covariances: list[NDArray],
-                 state_durations_params: list[tuple],
-                 rng: np.random.Generator | None = None) -> None:
+    def __init__(
+        self,
+        init_probs: NDArray,
+        transition_probs: NDArray,
+        emission_means: list[NDArray],
+        emission_covariances: list[NDArray],
+        state_durations_params: list[tuple],
+        rng: np.random.Generator | None = None,
+    ) -> None:
         """
         Initialize the Hidden Semi-Markov Model with multivariate emissions.
 
@@ -215,8 +230,9 @@ class HSMM(TimeSeries):
         self.init_probs = np.array(init_probs)
         self.transition_probs = np.array(transition_probs)
         self.emission_means = [np.array(mean) for mean in emission_means]
-        self.emission_covariances = [np.array(cov) for cov in
-                                     emission_covariances]
+        self.emission_covariances = [
+            np.array(cov) for cov in emission_covariances
+        ]
         self.state_durations_params = state_durations_params
 
         # Validate inputs
@@ -252,9 +268,14 @@ class HSMM(TimeSeries):
                 e = "Each covariance matrix must be positive semi-definite."
                 raise ValueError(e)
 
-    def truncated_discrete_normal(self, mean: float, std: float,
-                                  min_val: float, max_val: float,
-                                  size: int = 1) -> NDArray:
+    def truncated_discrete_normal(
+        self,
+        mean: float,
+        std: float,
+        min_val: float,
+        max_val: float,
+        size: int = 1,
+    ) -> NDArray:
         """
         Sample from a truncated discrete normal distribution.
 
@@ -271,7 +292,8 @@ class HSMM(TimeSeries):
         a = (min_val - mean) / std
         b = (max_val - mean) / std
         samples = truncnorm(a, b, loc=mean, scale=std).rvs(
-            size=size, random_state=self.rng)
+            size=size, random_state=self.rng
+        )
 
         return np.clip(np.round(samples), min_val, max_val).astype(int)
 
@@ -307,8 +329,9 @@ class HSMM(TimeSeries):
                 # Sample duration from truncated discrete normal distribution
                 values = self.state_durations_params[current_state]
                 mean, std, min_val, max_val = values
-                duration = self.truncated_discrete_normal(mean, std, min_val,
-                                                          max_val, size=1)[0]
+                duration = self.truncated_discrete_normal(
+                    mean, std, min_val, max_val, size=1
+                )[0]
 
                 # Limit duration to avoid exceeding the time series length
                 duration = min(duration, t - time)

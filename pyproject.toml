@@ -34,3 +34,26 @@ license-files = ["LICENSE"]
 
 [project.urls]
 Homepage = "https://github.com/lanl/lambast"
+
+# Tool configurations for line-length of 79
+
+[tool.ruff]
+line-length = 79
+
+[tool.isort]
+line_length = 79
+
+[tool.flake8]
+max-line-length = 79
+
+[tool.autopep8]
+max_line_length = 79
+
+[tool.black]
+line-length = 79
+
+[tool.ruff.lint]
+select = ["E501"]
+
+[tool.mypy]
+ignore-missing-imports = True

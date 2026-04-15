@@ -43,8 +43,9 @@ def run_example():
 
     # Now plot the density with some nice formatting
     fig, ax = plt.subplots()
-    CS = ax.contour(u, v, p, levels=qs, cmap="viridis",
-                    vmax=qs[-2], vmin=qs[0])
+    CS = ax.contour(
+        u, v, p, levels=qs, cmap="viridis", vmax=qs[-2], vmin=qs[0]
+    )
     ax.set_xlabel("U")
     ax.set_ylabel("V")
     ax.set_title(cop.copula_family + " (a = " + str(cop.alpha) + ")")
@@ -69,15 +70,22 @@ def run_example():
 
     # Plot those values in black
     label = f"Conditional Draws: V ~ P(v|u) = {given_u[0]})"
-    plt.scatter(given_u, v_draws, facecolors='none', edgecolors='k', s=10,
-                label=label)
+    plt.scatter(
+        given_u, v_draws, facecolors="none", edgecolors="k", s=10, label=label
+    )
 
     # Alternatively, we randomly draw by providing random numbers to "variable"
     u_random = stats.uniform.rvs(0, 1, n_draws)
     w_random = stats.uniform.rvs(0, 1, n_draws)
     v_random = cop.variable(u_random, w_random)
-    plt.scatter(u_random, v_random, facecolors='none', edgecolors='r', s=10,
-                label="Random Draws")
+    plt.scatter(
+        u_random,
+        v_random,
+        facecolors="none",
+        edgecolors="r",
+        s=10,
+        label="Random Draws",
+    )
     plt.legend()
     plt.show()
 
@@ -103,11 +111,11 @@ def run_example():
     # Pull the samples before they are passed to the marginal distribution
     uniform_samples = cop.uniform_samples
     # the first variable from the copula u(t)
-    u_t = uniform_samples[nn][0:t - 1]
+    u_t = uniform_samples[nn][0: t - 1]
     u_tp1 = uniform_samples[nn][1:]  # the second variable u(t+1)
 
     # x(t) has the marginal distribution applied to it:
-    x_t = samples[nn][0:t - 1]  # considered the "time-series" x(t)
+    x_t = samples[nn][0: t - 1]  # considered the "time-series" x(t)
     x_tp1 = samples[nn][1:]  # x(t+1)
 
     nr = 2
@@ -136,7 +144,7 @@ def run_example():
 
     plt.subplot(nr, nc, 4)
     plt.title("F^-1(x(t)) Follows the Copula")
-    plt.scatter(u_t, u_tp1, s=1, color='blue')
+    plt.scatter(u_t, u_tp1, s=1, color="blue")
     plt.xlabel("F^-1(x(t))")
     plt.ylabel("F^-1(x(t+1))")
 

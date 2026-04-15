@@ -21,8 +21,7 @@ def run_example():
     emission_means = [[0, 0], [3, 3]]  # Mean vectors for states 0 and 1
 
     # Covariance matrices for state 0 and 1
-    emission_covariances = [[[1, 0.2], [0.2, 1]],
-                            [[1, -0.3], [-0.3, 1]]]
+    emission_covariances = [[[1, 0.2], [0.2, 1]], [[1, -0.3], [-0.3, 1]]]
 
     # Duration parameters for each state
     state_durations_params = [
@@ -32,8 +31,14 @@ def run_example():
 
     # Initialize the HSMM
     rng = np.random.default_rng(seed=42)
-    hsmm = HSMM(init_probs, transition_probs, emission_means,
-                emission_covariances, state_durations_params, rng)
+    hsmm = HSMM(
+        init_probs,
+        transition_probs,
+        emission_means,
+        emission_covariances,
+        state_durations_params,
+        rng,
+    )
 
     # Generate time series data using above HSMM parameters
     samples, states = hsmm.sample(n, t)
@@ -43,8 +48,9 @@ def run_example():
     # Define a color palette for the time series
     colors = plt.cm.viridis(np.linspace(0, 1, n))
 
-    def do_plot(all_data, title, xlabel="Time",
-                ylabel="Value", label="Time Series"):
+    def do_plot(
+        all_data, title, xlabel="Time", ylabel="Value", label="Time Series"
+    ):
         """
         Factor out the plots
         """
@@ -60,18 +66,15 @@ def run_example():
 
     # Plot dimension 1 for all time series
     ax_index = 0
-    do_plot(t_samples[0].T, "Dimension 1 of Time Series",
-            label="Time Series")
+    do_plot(t_samples[0].T, "Dimension 1 of Time Series", label="Time Series")
 
     # Plot dimension 2 for all time series
     ax_index += 1
-    do_plot(t_samples[1].T, "Dimension 2 of Time Series",
-            label="Time Series")
+    do_plot(t_samples[1].T, "Dimension 2 of Time Series", label="Time Series")
 
     # Plot state sequences for all time series
     ax_index += 1
-    do_plot(states, "State Sequences", ylabel="State",
-            label="State Sequence")
+    do_plot(states, "State Sequences", ylabel="State", label="State Sequence")
 
     # Adjust layout and show the plot
     plt.tight_layout()
