@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 requires-python = ">= 3.10"
-version = "v0.1.4-test"
+version = "v0.1.4"
 name = "lambast"
 description = "Los Alamos Model Bias Assessment and Statistical Toolkit"
 dependencies = [
