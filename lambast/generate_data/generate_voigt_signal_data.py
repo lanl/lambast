@@ -62,18 +62,31 @@ class Voigt(object):
 
         # Initializing Parameters
         freq = self.rng.uniform(
-            self.freq_range[0], self.freq_range[1], self.sample_n)
+            self.freq_range[0], self.freq_range[1], self.sample_n
+        )
         phi = self.rng.uniform(
-            self.phi_range[0], self.phi_range[1], self.sample_n)
+            self.phi_range[0], self.phi_range[1], self.sample_n
+        )
         decay_rate = self.rng.uniform(
-            self.decay_rate_range[0], self.decay_rate_range[1], self.sample_n)
+            self.decay_rate_range[0], self.decay_rate_range[1], self.sample_n
+        )
         sigma = self.rng.uniform(
-            self.sigma_range[0], self.sigma_range[1], self.sample_n)
+            self.sigma_range[0], self.sigma_range[1], self.sample_n
+        )
         amp = self.rng.uniform(
-            self.amp_range[0], self.amp_range[1], self.sample_n)
+            self.amp_range[0], self.amp_range[1], self.sample_n
+        )
         const = np.zeros(self.sample_n)
-        df = pd.DataFrame({"freq": freq, "phi": phi, "decay_rate": decay_rate,
-                          "amp": amp, "sigma": sigma, "const": const})
+        df = pd.DataFrame(
+            {
+                "freq": freq,
+                "phi": phi,
+                "decay_rate": decay_rate,
+                "amp": amp,
+                "sigma": sigma,
+                "const": const,
+            }
+        )
 
         # Signal Generation
         t = np.linspace(0, self.nt / self.fs, self.nt)
@@ -83,7 +96,8 @@ class Voigt(object):
 
         # Generate White Noise
         noise = util.white_noise_gen(
-            t, self.sample_n, sigma=self.noise_var, rng=self.rng)
+            t, self.sample_n, sigma=self.noise_var, rng=self.rng
+        )
         snrs = util.compute_snr(sigs, noise)
         noisy_sig = sigs + noise
         df_in = {
@@ -111,9 +125,9 @@ class Voigt(object):
 
         return df_in, df_out
 
-    def __freq_or_sig_gen(self, vector: NDArray[np.float64],
-                          df: pd.DataFrame, mode: str
-                          ) -> NDArray[np.float64] | NDArray[np.complex64]:
+    def __freq_or_sig_gen(
+        self, vector: NDArray[np.float64], df: pd.DataFrame, mode: str
+    ) -> NDArray[np.float64] | NDArray[np.complex64]:
         """
         Function factoring out the common parts of sig_gen and freq_gen
         Args:
@@ -135,9 +149,14 @@ class Voigt(object):
 
         result = np.zeros((df.shape[0], len(vector)), dtype=dtype)
         for i in range(df.shape[0]):
-            signal = VoigtSignal(df.freq.iloc[i], df.decay_rate.iloc[i],
-                                 df.amp.iloc[i], df.phi.iloc[i],
-                                 df.sigma.iloc[i], df.const.iloc[i])
+            signal = VoigtSignal(
+                df.freq.iloc[i],
+                df.decay_rate.iloc[i],
+                df.amp.iloc[i],
+                df.phi.iloc[i],
+                df.sigma.iloc[i],
+                df.const.iloc[i],
+            )
             if mode == "time":
                 result[i, :] = signal.time_signal(vector)
             elif mode == "freq":
@@ -211,8 +230,8 @@ class VoigtSignal(object):
         frequency vector f_vec.
         """
 
-        exp_arg = (f_vec - self.freq + 1j * self.decay_rate)
-        exp_arg /= (self.sigma * np.sqrt(2))
+        exp_arg = f_vec - self.freq + 1j * self.decay_rate
+        exp_arg /= self.sigma * np.sqrt(2)
         fit = np.real(wofz(exp_arg)) / self.sigma
 
         return self.amp * fit / np.max(fit)

@@ -6,24 +6,36 @@ import ruptures as rpt
 from numpy.typing import NDArray
 
 from lambast.detection_methods import ChangePoint
-from lambast.generate_data import (HSMM, ClaytonCopula, FrankCopula, JoeCopula,
-                                   LinearSSM, NormalCopula, Voigt)
+from lambast.generate_data import (
+    HSMM,
+    ClaytonCopula,
+    FrankCopula,
+    JoeCopula,
+    LinearSSM,
+    NormalCopula,
+    Voigt,
+)
 
 
 class IntegratedTests(unittest.TestCase):
-    '''
+    """
     Generic class for integrated tests
-    '''
+    """
 
     def __init__(self, *args):
         super().__init__(*args)
 
-    def check_with_blessed(self, file: str | Path, array:  NDArray,
-                           n_digits: int = 14, save: bool = False,
-                           directory: str = "blessed_files") -> None:
-        '''
+    def check_with_blessed(
+        self,
+        file: str | Path,
+        array: NDArray,
+        n_digits: int = 14,
+        save: bool = False,
+        directory: str = "blessed_files",
+    ) -> None:
+        """
         Generic function to test array against blessed file
-        '''
+        """
 
         pathDir = Path(directory)
 
@@ -43,9 +55,9 @@ class IntegratedTests(unittest.TestCase):
 
 
 class LinearSSMTests(IntegratedTests):
-    '''
+    """
     Class for testing linear_SSM
-    '''
+    """
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -64,33 +76,41 @@ class LinearSSMTests(IntegratedTests):
         obs_noise_cov = 0.01 * np.eye(self.p)
 
         # Instantiate the SSM object
-        self.ssm = LinearSSM(state_matrix, state_noise_cov, obs_matrix,
-                             obs_noise_cov, rng=rng, scale_matrix=True)
+        self.ssm = LinearSSM(
+            state_matrix,
+            state_noise_cov,
+            obs_matrix,
+            obs_noise_cov,
+            rng=rng,
+            scale_matrix=True,
+        )
         # Sample the time series
         self.ssm.sample(self.n, self.t)
 
     def test_linear_SSM(self) -> None:
-        '''
+        """
         Base case
-        '''
+        """
 
         # Check against blessed file
         ssm_dir = Path("linear_SSM")
         self.check_with_blessed(ssm_dir / "base", self.ssm.ts_samples)
 
     def test_change_state_matrix(self) -> None:
-        '''
+        """
         Changing the state matrix
-        '''
+        """
 
         # Re-initialize the rng so this does not depend on
         # the order this is run
         rng = np.random.default_rng(seed=42)
 
-        state_matrix = self.ssm.state_matrix + \
-            0.1 * rng.normal(size=(self.d, self.d))
-        ssm = self.ssm.copy_with_changes(state_matrix=state_matrix,
-                                         scale_matrix=True, rng=rng)
+        state_matrix = self.ssm.state_matrix + 0.1 * rng.normal(
+            size=(self.d, self.d)
+        )
+        ssm = self.ssm.copy_with_changes(
+            state_matrix=state_matrix, scale_matrix=True, rng=rng
+        )
         ssm.sample(self.n, self.t)
 
         # Check against blessed file
@@ -98,16 +118,17 @@ class LinearSSMTests(IntegratedTests):
         self.check_with_blessed(ssm_dir / "state_matrix", ssm.ts_samples)
 
     def test_change_observation_noise(self) -> None:
-        '''
+        """
         Changing the observation noise
-        '''
+        """
 
         # Re-initialize the rng so this does not depend on
         # the order this is run
 
         obs_noise_cov = 1.0 * np.eye(self.p)
         ssm = self.ssm.copy_with_changes(
-            obs_noise_cov=obs_noise_cov, rng=np.random.default_rng(seed=42))
+            obs_noise_cov=obs_noise_cov, rng=np.random.default_rng(seed=42)
+        )
         ssm.sample(self.n, self.t)
 
         # Check against blessed file
@@ -115,16 +136,17 @@ class LinearSSMTests(IntegratedTests):
         self.check_with_blessed(ssm_dir / "observation_noise", ssm.ts_samples)
 
     def test_change_observation_matrix(self) -> None:
-        '''
+        """
         Changing the observation matrix
-        '''
+        """
 
         # Re-initialize the rng so this does not depend on
         # the order this is run
         rng = np.random.default_rng(seed=42)
 
-        obs_matrix = self.ssm.obs_matrix + 1.5 * \
-            rng.normal(size=(self.p, self.d))
+        obs_matrix = self.ssm.obs_matrix + 1.5 * rng.normal(
+            size=(self.p, self.d)
+        )
         ssm = self.ssm.copy_with_changes(obs_matrix=obs_matrix, rng=rng)
         ssm.sample(self.n, self.t)
 
@@ -134,9 +156,9 @@ class LinearSSMTests(IntegratedTests):
 
 
 class CopulaTests(IntegratedTests):
-    '''
+    """
     Class for testing ClaytonCopula
-    '''
+    """
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -160,9 +182,9 @@ class CopulaTests(IntegratedTests):
             c.define_marginal(marginal_family="gamma", loc=None, scale=None)
 
     def __test_samples(self, name: str) -> None:
-        '''
+        """
         Test the named copula sample generation
-        '''
+        """
 
         # Generate the samples with seed for test reproducibility
         rng = np.random.default_rng(seed=42)
@@ -172,75 +194,75 @@ class CopulaTests(IntegratedTests):
         self.check_with_blessed(file, copula.sample(self.n, self.t, rng=rng))
 
     def __test_density(self, name: str) -> None:
-        '''
+        """
         Test the named copula density generation
-        '''
+        """
 
         file = Path("copulas") / f"{name.lower()}_density"
         copula = self.copulas[name.capitalize()]
         self.check_with_blessed(file, copula.density(n_samples=self.n_samples))
 
     def test_clayton_copula_samples(self) -> None:
-        '''
+        """
         Test the Clayton copula sample generation
-        '''
+        """
 
         self.__test_samples("Clayton")
 
     def test_clayton_copula_density(self) -> None:
-        '''
+        """
         Test the Clayton copula density generation
-        '''
+        """
 
         self.__test_density("Clayton")
 
     def test_joe_copula(self) -> None:
-        '''
+        """
         Test the Joe copula sample generation
-        '''
+        """
 
         self.__test_samples("Joe")
 
     def test_joe_copula_density(self) -> None:
-        '''
+        """
         Test the Joe copula density generation
-        '''
+        """
 
         self.__test_density("Joe")
 
     def test_frank_copula(self) -> None:
-        '''
+        """
         Test the Frank copula sample generation
-        '''
+        """
 
         self.__test_samples("Frank")
 
     def test_frank_copula_density(self) -> None:
-        '''
+        """
         Test the Frank copula density generation
-        '''
+        """
 
         self.__test_density("Frank")
 
     def test_normal_copula(self) -> None:
-        '''
+        """
         Test the normal copula sample generation
-        '''
+        """
 
         self.__test_density("normal")
 
     def test_normal_copula_density(self) -> None:
-        '''
+        """
         Test the normal copula density generation
-        '''
+        """
 
         self.__test_samples("normal")
 
 
 class HSMMTests(IntegratedTests):
-    '''
+    """
     Class for testing HSMM
-    '''
+    """
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -262,8 +284,7 @@ class HSMMTests(IntegratedTests):
         emission_means = [[0, 0], [3, 3]]
 
         # Covariance matrices for state 0 and 1
-        emission_covariances = [[[1, 0.2], [0.2, 1]],
-                                [[1, -0.3], [-0.3, 1]]]
+        emission_covariances = [[[1, 0.2], [0.2, 1]], [[1, -0.3], [-0.3, 1]]]
 
         # Duration parameters for each state
         state_durations_params = [
@@ -273,13 +294,19 @@ class HSMMTests(IntegratedTests):
 
         # Initialize the HSMM
         rng = np.random.default_rng(seed=42)
-        self.hsmm = HSMM(init_probs, transition_probs, emission_means,
-                         emission_covariances, state_durations_params, rng)
+        self.hsmm = HSMM(
+            init_probs,
+            transition_probs,
+            emission_means,
+            emission_covariances,
+            state_durations_params,
+            rng,
+        )
 
     def test_HSMM_sample(self) -> None:
-        '''
+        """
         Simple sampling test
-        '''
+        """
 
         samples, states = self.hsmm.sample(self.n, self.t)
 
@@ -290,9 +317,9 @@ class HSMMTests(IntegratedTests):
 
 
 class VoigtTests(IntegratedTests):
-    '''
+    """
     Class for testing VoigtSignal
-    '''
+    """
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -300,27 +327,44 @@ class VoigtTests(IntegratedTests):
         # Settings
         self.rng = np.random.default_rng(seed=42)
 
-        self.fs = 1./1.8e-05
+        self.fs = 1.0 / 1.8e-05
         self.nt = 2048
         self.in_dist_range = [-200, 200]
         self.out_dist_range = [300, 700]
         self.sample_n = 100
 
-        self.in_keys = ["nt", "fs", "freq", "phi", "decay_rate", "amp",
-                        "sigma", "noise_var", "const", "t", "f_vec"]
+        self.in_keys = [
+            "nt",
+            "fs",
+            "freq",
+            "phi",
+            "decay_rate",
+            "amp",
+            "sigma",
+            "noise_var",
+            "const",
+            "t",
+            "f_vec",
+        ]
         self.out_keys = ["snr", "sigs", "noise", "noisy_sig", "freqs"]
 
     def test_Voigt_sample_in(self) -> None:
-        '''
+        """
         Simple synthetic data generation
-        '''
+        """
 
-        df_in, df_out = Voigt(sample_n=self.sample_n, nt=self.nt,
-                              fs=1./1.8e-05, freq_range=self.in_dist_range,
-                              phi_range=(-np.pi, np.pi),
-                              decay_rate_range=(1e-3, 1e-2),
-                              sigma_range=(1e-3, 1e-2), amp_range=(1, 2),
-                              noise_var=1, rng=self.rng).synthetic_data_gen()
+        df_in, df_out = Voigt(
+            sample_n=self.sample_n,
+            nt=self.nt,
+            fs=1.0 / 1.8e-05,
+            freq_range=self.in_dist_range,
+            phi_range=(-np.pi, np.pi),
+            decay_rate_range=(1e-3, 1e-2),
+            sigma_range=(1e-3, 1e-2),
+            amp_range=(1, 2),
+            noise_var=1,
+            rng=self.rng,
+        ).synthetic_data_gen()
 
         voigt_dir = Path.joinpath(Path("Voigt"), "fr_in")
         for key in self.in_keys:
@@ -328,19 +372,26 @@ class VoigtTests(IntegratedTests):
 
         for key in self.out_keys:
             self.check_with_blessed(
-                voigt_dir / f"Voigt_out_{key}", df_out[key])
+                voigt_dir / f"Voigt_out_{key}", df_out[key]
+            )
 
     def test_Voigt_sample_out(self) -> None:
-        '''
+        """
         Simple synthetic data generation
-        '''
+        """
 
-        df_in, df_out = Voigt(sample_n=self.sample_n, nt=self.nt,
-                              fs=1./1.8e-05, freq_range=self.out_dist_range,
-                              phi_range=(-np.pi, np.pi),
-                              decay_rate_range=(1e-3, 1e-2),
-                              sigma_range=(1e-3, 1e-2), amp_range=(1, 2),
-                              noise_var=1, rng=self.rng).synthetic_data_gen()
+        df_in, df_out = Voigt(
+            sample_n=self.sample_n,
+            nt=self.nt,
+            fs=1.0 / 1.8e-05,
+            freq_range=self.out_dist_range,
+            phi_range=(-np.pi, np.pi),
+            decay_rate_range=(1e-3, 1e-2),
+            sigma_range=(1e-3, 1e-2),
+            amp_range=(1, 2),
+            noise_var=1,
+            rng=self.rng,
+        ).synthetic_data_gen()
 
         voigt_dir = Path.joinpath(Path("Voigt"), "fr_out")
         for key in self.in_keys:
@@ -348,19 +399,25 @@ class VoigtTests(IntegratedTests):
 
         for key in self.out_keys:
             self.check_with_blessed(
-                voigt_dir / f"Voigt_out_{key}", df_out[key])
+                voigt_dir / f"Voigt_out_{key}", df_out[key]
+            )
 
 
 class ChangePointTest(IntegratedTests):
-    '''
+    """
     Class for testing ChangePoint
-    '''
+    """
 
-    def _synthetic_data(self, gen_type: str = "constant", n_samples: int = 200,
-                        n_features: int = 1, n_bkps: int = 3,
-                        noise_std: float | None = None,
-                        delta: tuple[int, int] = (1, 10),
-                        seed: int | None = None) -> NDArray[np.float64]:
+    def _synthetic_data(
+        self,
+        gen_type: str = "constant",
+        n_samples: int = 200,
+        n_features: int = 1,
+        n_bkps: int = 3,
+        noise_std: float | None = None,
+        delta: tuple[int, int] = (1, 10),
+        seed: int | None = None,
+    ) -> NDArray[np.float64]:
         """
         Create synthetic data to test changepoint detection, only the arguments
         compatible with the call will be preserved. The possible arguments are:
@@ -375,40 +432,53 @@ class ChangePointTest(IntegratedTests):
         """
 
         generators = {
-            "constant": [rpt.pw_constant, {
-                "n_samples": n_samples,
-                "n_features": n_features,
-                "n_bkps": n_bkps,
-                "noise_std": noise_std,
-                "delta": delta,
-                "seed": seed,
-            }],
-            "linear": [rpt.pw_linear, {
-                "n_samples": n_samples,
-                "n_features": n_features,
-                "n_bkps": n_bkps,
-                "noise_std": noise_std,
-                "seed": seed,
-            }],
-            "normal": [rpt.pw_normal, {
-                "n_samples": n_samples,
-                "n_bkps": n_bkps,
-                "seed": seed,
-            }],
-            "wavy": [rpt.pw_wavy, {
-                "n_samples": n_samples,
-                "n_bkps": n_bkps,
-                "noise_std": noise_std,
-                "seed": seed,
-            }],
+            "constant": [
+                rpt.pw_constant,
+                {
+                    "n_samples": n_samples,
+                    "n_features": n_features,
+                    "n_bkps": n_bkps,
+                    "noise_std": noise_std,
+                    "delta": delta,
+                    "seed": seed,
+                },
+            ],
+            "linear": [
+                rpt.pw_linear,
+                {
+                    "n_samples": n_samples,
+                    "n_features": n_features,
+                    "n_bkps": n_bkps,
+                    "noise_std": noise_std,
+                    "seed": seed,
+                },
+            ],
+            "normal": [
+                rpt.pw_normal,
+                {
+                    "n_samples": n_samples,
+                    "n_bkps": n_bkps,
+                    "seed": seed,
+                },
+            ],
+            "wavy": [
+                rpt.pw_wavy,
+                {
+                    "n_samples": n_samples,
+                    "n_bkps": n_bkps,
+                    "noise_std": noise_std,
+                    "seed": seed,
+                },
+            ],
         }
 
         signal, bkps = generators[gen_type][0](**generators[gen_type][1])
 
         return signal
 
-    def _detect_changepoints(self, signals: list, use_estimator: str,
-                             kwarg_list: list) -> list:
+    def _detect_changepoints(
+        self, signals: list, use_estimator: str, kwarg_list: list
+    ) -> list:
         """
         Helper function to detect changepoints with a given estimate and plot
         them at the same time
@@ -420,8 +490,9 @@ class ChangePointTest(IntegratedTests):
         # Detect and plot
         breakpoints = []
         for i, signal in enumerate(signals):
-            ts_detection.detect_change_point(signal, estimator=use_estimator,
-                                             **kwarg_list[i])
+            ts_detection.detect_change_point(
+                signal, estimator=use_estimator, **kwarg_list[i]
+            )
 
             breakpoints.append(ts_detection.optimal_breakpoints)
 
@@ -438,19 +509,28 @@ class ChangePointTest(IntegratedTests):
 
         # Clean signals
         signal_clean = self._synthetic_data(
-            gen_type=gen_type, n_bkps=n_bkps, seed=seed, n_features=n_features)
+            gen_type=gen_type, n_bkps=n_bkps, seed=seed, n_features=n_features
+        )
 
         # Add some noise
         noise_std = 1
         signal_noise_low = self._synthetic_data(
-            gen_type=gen_type, n_bkps=n_bkps, noise_std=noise_std, seed=seed,
-            n_features=n_features)
+            gen_type=gen_type,
+            n_bkps=n_bkps,
+            noise_std=noise_std,
+            seed=seed,
+            n_features=n_features,
+        )
 
         # Add much more noise
         noise_std = 10
         signal_noise_high = self._synthetic_data(
-            gen_type=gen_type, n_bkps=n_bkps, noise_std=noise_std, seed=seed,
-            n_features=n_features)
+            gen_type=gen_type,
+            n_bkps=n_bkps,
+            noise_std=noise_std,
+            seed=seed,
+            n_features=n_features,
+        )
 
         self.signals = [signal_clean, signal_noise_low, signal_noise_high]
 
@@ -460,9 +540,10 @@ class ChangePointTest(IntegratedTests):
         """
 
         use_estimator = "Pelt"
-        kwarg_list = [{"pen": 2.}, {"pen": 4.}, {"pen": 8.}]
+        kwarg_list = [{"pen": 2.0}, {"pen": 4.0}, {"pen": 8.0}]
         breakpoints = self._detect_changepoints(
-            self.signals, use_estimator, kwarg_list)
+            self.signals, use_estimator, kwarg_list
+        )
 
         assert breakpoints[0] == [70, 135, 200]
         assert breakpoints[1] == [70, 135, 200]
@@ -475,10 +556,14 @@ class ChangePointTest(IntegratedTests):
 
         use_estimator = "Binseg"
         n_bkps = 2
-        kwarg_list = [{"n_bkps": n_bkps},
-                      {"n_bkps": n_bkps}, {"n_bkps": n_bkps}]
+        kwarg_list = [
+            {"n_bkps": n_bkps},
+            {"n_bkps": n_bkps},
+            {"n_bkps": n_bkps},
+        ]
         breakpoints = self._detect_changepoints(
-            self.signals, use_estimator, kwarg_list)
+            self.signals, use_estimator, kwarg_list
+        )
 
         assert breakpoints[0] == [70, 135, 200]
         assert breakpoints[1] == [70, 135, 200]

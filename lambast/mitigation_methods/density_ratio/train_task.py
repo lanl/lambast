@@ -5,7 +5,6 @@ Training utilities for binary classification task.
 
 """
 
-
 from __future__ import annotations
 
 from typing import Dict, Optional, Tuple, Union
@@ -79,7 +78,8 @@ def train_binary_classifier(
     sample_weight: (N,) positive weights (optional)
     """
     device = device or torch.device(
-        "cuda" if torch.cuda.is_available() else "cpu")
+        "cuda" if torch.cuda.is_available() else "cpu"
+    )
     model.to(device)
     model.train()
 

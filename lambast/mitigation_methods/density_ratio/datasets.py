@@ -129,10 +129,12 @@ class WeightedTaskDataset(Dataset):
         n = int(self.X.shape[0])
         if self.y.shape[0] != n:
             raise ValueError(
-                f"y must have length N={n}; got {self.y.shape[0]}.")
+                f"y must have length N={n}; got {self.y.shape[0]}."
+            )
         if self.w.shape[0] != n:
             raise ValueError(
-                f"w must have length N={n}; got {self.w.shape[0]}.")
+                f"w must have length N={n}; got {self.w.shape[0]}."
+            )
 
     def __len__(self) -> int:
         return int(self.X.shape[0])
@@ -151,6 +153,7 @@ class BalancedDomainBatch:
     x: (B, C, T)
     y: (B,) float labels 0/1
     """
+
     x: torch.Tensor
     y: torch.Tensor
 
@@ -171,7 +174,8 @@ def make_balanced_domain_batch(
     """
     if batch_size % 2 != 0:
         raise ValueError(
-            "batch_size must be even for balanced domain batching.")
+            "batch_size must be even for balanced domain batching."
+        )
 
     half = batch_size // 2
     if source_indices.numel() != half or target_indices.numel() != half:
@@ -180,14 +184,21 @@ def make_balanced_domain_batch(
             f"got {source_indices.numel()} and {target_indices.numel()}."
         )
 
-    xs = torch.stack([domain_ds.get_source(int(i))
-                     for i in source_indices], dim=0)
-    xt = torch.stack([domain_ds.get_target(int(i))
-                     for i in target_indices], dim=0)
+    xs = torch.stack(
+        [domain_ds.get_source(int(i)) for i in source_indices], dim=0
+    )
+    xt = torch.stack(
+        [domain_ds.get_target(int(i)) for i in target_indices], dim=0
+    )
 
     x = torch.cat([xs, xt], dim=0)
-    y = torch.cat([torch.zeros(half, dtype=torch.float32),
-                   torch.ones(half, dtype=torch.float32)], dim=0, )
+    y = torch.cat(
+        [
+            torch.zeros(half, dtype=torch.float32),
+            torch.ones(half, dtype=torch.float32),
+        ],
+        dim=0,
+    )
 
     # Shuffle within the batch so the model doesn't see ordered domains.
     perm = torch.randperm(batch_size)

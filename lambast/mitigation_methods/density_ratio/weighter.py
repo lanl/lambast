@@ -1,4 +1,3 @@
-
 """
 lambast/mitigation_methods/density_ratio/weighter.py
 
@@ -56,7 +55,8 @@ class DensityRatioWeighter:
         self.normalize = normalize
 
         self.device = (
-            device if device is not None
+            device
+            if device is not None
             else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         )
 
@@ -70,11 +70,12 @@ class DensityRatioWeighter:
     # ----------------------------
 
     def fit(
-            self,
-            X_source: TensorLike,
-            X_target: TensorLike,
-            X_source_val=None,
-            X_target_val=None) -> "DensityRatioWeighter":
+        self,
+        X_source: TensorLike,
+        X_target: TensorLike,
+        X_source_val=None,
+        X_target_val=None,
+    ) -> "DensityRatioWeighter":
         """
         Train domain classifier on source vs target.
         Parameters
@@ -111,14 +112,16 @@ class DensityRatioWeighter:
         half_batch = self.batch_size // 2
         if self.batch_size % 2 != 0:
             raise ValueError(
-                "batch_size must be even for balanced domain training.")
+                "batch_size must be even for balanced domain training."
+            )
 
         self.model.train()
         self.history_ = {
             "train_loss": [],
             "train_acc": [],
             "val_loss": [],
-            "val_acc": []}
+            "val_acc": [],
+        }
         for epoch in range(self.epochs):
             # number of balanced steps per epoch
             steps = max(n_source, n_target) // half_batch
@@ -171,7 +174,8 @@ class DensityRatioWeighter:
         self.diagnostics_["domain_loss"] = float(final_loss)
         self.diagnostics_["domain_accuracy"] = float(final_acc)
         self.diagnostics_["used_validation_for_diagnostics"] = float(
-            val_ds is not None)
+            val_ds is not None
+        )
 
         return self
 
@@ -254,7 +258,8 @@ class DensityRatioWeighter:
 
     @torch.no_grad()
     def _eval_domain_full(
-            self, domain_ds: DomainDataset) -> Tuple[float, float]:
+        self, domain_ds: DomainDataset
+    ) -> Tuple[float, float]:
         """
         Full evaluation on all source and all target examples.
 

@@ -50,9 +50,11 @@ class PermutationDistance(object):
         self.prev_train: NDArray | None = None
         self.prev_target: NDArray | None = None
 
-    def __data_range(self, train_data: ArrayLike | None = None,
-                     target_data: ArrayLike | None = None
-                     ) -> tuple[float, float]:
+    def __data_range(
+        self,
+        train_data: ArrayLike | None = None,
+        target_data: ArrayLike | None = None,
+    ) -> tuple[float, float]:
         """
         Retreive the data range
 
@@ -72,11 +74,13 @@ class PermutationDistance(object):
         all_data = np.concatenate((train_data, target_data))
         return np.min(all_data), np.max(all_data)
 
-    def __get_percent(self, train_data: ArrayLike | None = None,
-                      target_data: ArrayLike | None = None,
-                      num_bins: int | None = None,
-                      min_bin_prob: float | None = None
-                      ) -> tuple[NDArray, NDArray]:
+    def __get_percent(
+        self,
+        train_data: ArrayLike | None = None,
+        target_data: ArrayLike | None = None,
+        num_bins: int | None = None,
+        min_bin_prob: float | None = None,
+    ) -> tuple[NDArray, NDArray]:
         """
         Common operations for histogram calculation
 
@@ -100,27 +104,32 @@ class PermutationDistance(object):
         if min_bin_prob is None:
             min_bin_prob = self.min_bin_prob
 
-        min_, max_ = self.__data_range(train_data=train_data,
-                                       target_data=target_data)
+        min_, max_ = self.__data_range(
+            train_data=train_data, target_data=target_data
+        )
 
         # Train data percent
-        train_p = np.histogram(train_data, bins=num_bins,
-                               range=(min_, max_))[0]
+        train_p = np.histogram(train_data, bins=num_bins, range=(min_, max_))[
+            0
+        ]
         train_p /= np.size(train_data)
         train_p = np.clip(train_p, a_min=min_bin_prob, a_max=None)
 
         # Target data percent
-        target_p = np.histogram(target_data, bins=num_bins,
-                                range=(min_, max_))[0]
+        target_p = np.histogram(
+            target_data, bins=num_bins, range=(min_, max_)
+        )[0]
         target_p /= np.size(target_data)
         target_p = np.clip(target_p, a_min=min_bin_prob, a_max=None)
 
         return train_p, target_p
 
-    def __get_distrib(self, train_data: ArrayLike | None = None,
-                      target_data: ArrayLike | None = None,
-                      num_samples: int | None = None
-                      ) -> tuple[NDArray, NDArray]:
+    def __get_distrib(
+        self,
+        train_data: ArrayLike | None = None,
+        target_data: ArrayLike | None = None,
+        num_samples: int | None = None,
+    ) -> tuple[NDArray, NDArray]:
         """
         Common operations for kde calculation
 
@@ -140,8 +149,9 @@ class PermutationDistance(object):
         if num_samples is None:
             num_samples = self.num_samples
 
-        min_, max_ = self.__data_range(train_data=train_data,
-                                       target_data=target_data)
+        min_, max_ = self.__data_range(
+            train_data=train_data, target_data=target_data
+        )
 
         vals = np.linspace(min_, max_, num_samples)
 
@@ -153,14 +163,18 @@ class PermutationDistance(object):
 
         return train_d, target_d
 
-    def metric(self, type_: str, use: str,
-               train_data: ArrayLike | None = None,
-               target_data: ArrayLike | None = None,
-               num_bins: int | None = None,
-               min_bin_prob: float | None = None,
-               num_samples: int | None = None,
-               wass_p: float | None = None,
-               memoize: bool = False) -> float:
+    def metric(
+        self,
+        type_: str,
+        use: str,
+        train_data: ArrayLike | None = None,
+        target_data: ArrayLike | None = None,
+        num_bins: int | None = None,
+        min_bin_prob: float | None = None,
+        num_samples: int | None = None,
+        wass_p: float | None = None,
+        memoize: bool = False,
+    ) -> float:
         """
         Returns a given metric
 
@@ -212,8 +226,9 @@ class PermutationDistance(object):
                 # Same as before but with the target data
                 if self.prev_target is None:
                     self.target_d = None
-                elif (abs(self.prev_target - target_data) >
-                      self.diff_tol).any():
+                elif (
+                    abs(self.prev_target - target_data) > self.diff_tol
+                ).any():
                     self.target_d = None
 
                 # Remember the new data
@@ -225,14 +240,18 @@ class PermutationDistance(object):
             # Train and target percentages or distributions
             if self.train_d is None or self.target_d is None:
                 if use == "histogram":
-                    tup = self.__get_percent(train_data=train_data,
-                                             target_data=target_data,
-                                             num_bins=num_bins,
-                                             min_bin_prob=min_bin_prob)
+                    tup = self.__get_percent(
+                        train_data=train_data,
+                        target_data=target_data,
+                        num_bins=num_bins,
+                        min_bin_prob=min_bin_prob,
+                    )
                 elif use == "kde":
-                    tup = self.__get_distrib(train_data=train_data,
-                                             target_data=target_data,
-                                             num_samples=num_samples)
+                    tup = self.__get_distrib(
+                        train_data=train_data,
+                        target_data=target_data,
+                        num_samples=num_samples,
+                    )
                 else:
                     e = "Provide a use parameter: 'histogram' or 'kde'"
                     raise Exception(e)
@@ -243,35 +262,42 @@ class PermutationDistance(object):
 
         match type_:
             case "PSI":
-                return np.sum((self.train_d - self.target_d) *
-                              np.log(self.train_d / self.target_d))
+                return np.sum(
+                    (self.train_d - self.target_d)
+                    * np.log(self.train_d / self.target_d)
+                )
             case "JS":
-                return sp.spatial.distance.jensenshannon(self.train_d,
-                                                         self.target_d,
-                                                         base=np.e)
+                return sp.spatial.distance.jensenshannon(
+                    self.train_d, self.target_d, base=np.e
+                )
             case "WD":
                 if wass_p is None:
                     wass_p = self.wass_p
                 return np.mean(
-                    np.abs(
-                        np.sort(train_data) - np.sort(target_data)
-                    ) ** wass_p) ** (-wass_p)
+                    np.abs(np.sort(train_data) - np.sort(target_data))
+                    ** wass_p
+                ) ** (-wass_p)
             case "KS":
-                return sp.stats.kstest(train_data,  # type: ignore[arg-type]
-                                       target_data,  # type: ignore[arg-type]
-                                       alternative='two-sided').statistic
+                return sp.stats.kstest(
+                    train_data,  # type: ignore[arg-type]
+                    target_data,  # type: ignore[arg-type]
+                    alternative="two-sided",
+                ).statistic
             case _:
                 e = "Provide a type_ parameter: 'PSI', 'JS', 'WD', or 'KS'"
                 raise Exception(e)
 
-    def data_shift_test(self, use: str, metrics: list[str] | str,
-                        wass_p: float | None = None,
-                        num_bins: int | None = None,
-                        min_bin_prob: float | None = None,
-                        num_samples: int | None = None,
-                        n_resamples: int | None = None,
-                        p_value: float | None = None
-                        ) -> list[tuple[float, bool]] | tuple[float, bool]:
+    def data_shift_test(
+        self,
+        use: str,
+        metrics: list[str] | str,
+        wass_p: float | None = None,
+        num_bins: int | None = None,
+        min_bin_prob: float | None = None,
+        num_samples: int | None = None,
+        n_resamples: int | None = None,
+        p_value: float | None = None,
+    ) -> list[tuple[float, bool]] | tuple[float, bool]:
         """
         Return tuple of p_value and boolean value equal to 1 if data shift is
         detected from "self.train_data" to "self.target_data" based on metric
@@ -321,29 +347,34 @@ class PermutationDistance(object):
         combined_data = np.concatenate((self.train_data, self.target_data))
 
         for type_ in metrics_list:
-
-            observed_stat.append(0.)
+            observed_stat.append(0.0)
             permuted_stats.append([])
-            results.append((0., False))
+            results.append((0.0, False))
 
             if type_ == "KS":
-                ks_test_result = sp.stats.kstest(self.train_data,
-                                                 self.target_data,
-                                                 alternative='two-sided')
+                ks_test_result = sp.stats.kstest(
+                    self.train_data, self.target_data, alternative="two-sided"
+                )
 
                 # Give the results already
-                results[-1] = (ks_test_result.pvalue,
-                               ks_test_result.pvalue < p_value)
+                results[-1] = (
+                    ks_test_result.pvalue,
+                    ks_test_result.pvalue < p_value,
+                )
                 continue
 
-            observed_stat[-1] = self.metric(type_, use, wass_p=wass_p,
-                                            num_bins=num_bins,
-                                            min_bin_prob=min_bin_prob,
-                                            num_samples=num_samples)
+            observed_stat[-1] = self.metric(
+                type_,
+                use,
+                wass_p=wass_p,
+                num_bins=num_bins,
+                min_bin_prob=min_bin_prob,
+                num_samples=num_samples,
+            )
 
         for i in range(n_resamples):
             np.random.shuffle(combined_data)
-            perm_group_a = combined_data[:len(self.train_data)]
+            perm_group_a = combined_data[: len(self.train_data)]
             perm_group_b = combined_data[len(self.train_data):]
 
             for j, type_ in enumerate(metrics_list):
@@ -351,21 +382,27 @@ class PermutationDistance(object):
                 if type_ == "KS":
                     continue
 
-                permuted_stats[j].append(self.metric(type_, use,
-                                                     train_data=perm_group_a,
-                                                     target_data=perm_group_b,
-                                                     wass_p=wass_p,
-                                                     num_bins=num_bins,
-                                                     min_bin_prob=min_bin_prob,
-                                                     num_samples=num_samples,
-                                                     memoize=True))
+                permuted_stats[j].append(
+                    self.metric(
+                        type_,
+                        use,
+                        train_data=perm_group_a,
+                        target_data=perm_group_b,
+                        wass_p=wass_p,
+                        num_bins=num_bins,
+                        min_bin_prob=min_bin_prob,
+                        num_samples=num_samples,
+                        memoize=True,
+                    )
+                )
 
         for j, type_ in enumerate(metrics_list):
             if type_ == "KS":
                 continue
 
             test_p_value = np.mean(
-                np.abs(permuted_stats[j]) >= np.abs(observed_stat[j]))
+                np.abs(permuted_stats[j]) >= np.abs(observed_stat[j])
+            )
             result = (test_p_value, test_p_value < p_value)
             results[j] = result
 

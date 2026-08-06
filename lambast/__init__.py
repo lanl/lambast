@@ -12,6 +12,7 @@ generate_data
 utils
     General utility functions
 """
+
 import importlib as _importlib
 
 from lambast.version import version as __version__
@@ -24,7 +25,7 @@ __all__ = submodules + ["__version__"]
 
 def __getattr__(name):
     if name in submodules:
-        return _importlib.import_module(f'lambast.{name}')
+        return _importlib.import_module(f"lambast.{name}")
     else:
         try:
             return globals()[name]
@@ -33,4 +34,5 @@ def __getattr__(name):
                 pass
             else:
                 raise ModuleNotFoundError(
-                    f"Module {name} does not exist in LAMBAST")
+                    f"Module {name} does not exist in LAMBAST"
+                )

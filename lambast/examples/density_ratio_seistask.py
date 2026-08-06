@@ -50,14 +50,14 @@ with resources.as_file(resources.files("lambast")) as package_root:
     data_dir = package_root / "datasets" / "seistask"
 
 # %% Load data
-with h5py.File('%s/SeisTask_data.h5' % data_dir, 'r') as f:
+with h5py.File(f'{data_dir}/SeisTask_data.h5', 'r') as f:
     # List all groups and datasets in the file
-    print("Keys: %s" % f.keys())
+    print(f"Keys: {f.keys()}")
     print(f['data'].shape)
     data = f['data'][:]
 
 # split source/target and make train/test
-meta = pd.read_csv('%s/SeisTask_metadata.csv' % data_dir)
+meta = pd.read_csv(f'{data_dir}/SeisTask_metadata.csv')
 source_ix = np.where(meta['source_type'] == 'ricker')[0]
 target_ix = np.where(meta['source_type'] == 'gabor')[0]
 source_y = meta.iloc[source_ix]['signal'].to_numpy()
